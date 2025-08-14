@@ -1,16 +1,44 @@
 // AI generated functions for calculating user's WPM and accuracy
 
-export function computeWPM(charsTyped: number, msElapsed: number) {
-  const words = charsTyped / 5;
-  const minutes = msElapsed / 60000;
-  return minutes > 0 ? Math.round((words / minutes) * 10) / 10 : 0;
-}
+export type Metrics = {
+  correctChars: number;
+  totalChars: number;
+  accuracy: number; // 0..1
+  correctCompletedWords: number;
+  wpm: number;
+};
 
-export function computeAccuracy(target: string, input: string) {
-  const len = Math.max(target.length, input.length) || 1;
-  let correct = 0;
-  for (let i = 0; i < Math.min(target.length, input.length); i++) {
-    if (target[i] === input[i]) correct++;
+export function computeMetrics(
+  target: string,
+  typed: string,
+  elapsedMs: number
+): Metrics {
+  const totalChars = Math.min(typed.length, target.length);
+  let correctChars = 0;
+
+  for (let i = 0; i < totalChars; i++) {
+    if (typed[i] === target[i]) correctChars++;
   }
-  return Math.round((correct / len) * 1000) / 10; // e.g. 97.3
+
+  const targetWords = target.split(" ");
+  const typedWords = typed.split(" ");
+
+  let correctCompletedWords = 0;
+
+  const wordsToCheck = Math.min(typedWords.length, targetWords.length);
+
+  for (let i = 0; i < wordsToCheck; i++) {
+    const wordOk = typedWords[i] === targetWords[i];
+    const finishedBoundary =
+      i < typedWords.length - 1 ||
+      (i === wordsToCheck - 1 &&
+        typedWords[i].length === targetWords[i].length);
+    if (wordOk && finishedBoundary) correctCompletedWords++;
+  }
+
+  const minutes = Math.max(elapsedMs / 60000, 1 / 60000); // avoid div-by-zero
+  const wpm = correctCompletedWords / minutes;
+  const accuracy = totalChars === 0 ? 1 : correctChars / totalChars;
+
+  return { correctChars, totalChars, accuracy, correctCompletedWords, wpm };
 }
