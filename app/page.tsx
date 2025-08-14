@@ -1,12 +1,13 @@
 "use client";
 
-import { ProfileCard } from "@/components/Profile";
+import { useEffect, useRef } from "react";
+
 import { ScoreTable } from "@/components/ScoreTable";
 import { Timer } from "@/components/Timer";
 import { TypingArea } from "@/components/TypingArea";
 import { usePlayer } from "@/lib/hooks/usePlayer";
 import { useRound } from "@/lib/hooks/useRound";
-import { useEffect, useRef } from "react";
+import { Profile } from "@/components/Profile";
 
 export default function Page() {
   const { round, secondsLeft } = useRound();
@@ -20,7 +21,9 @@ export default function Page() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(player),
-    }).catch(() => {});
+    }).catch(() => {
+      console.error("Failed to join");
+    });
 
     return () => {};
   }, [player?.id]);
@@ -44,7 +47,7 @@ export default function Page() {
         </>
       )}
 
-      <ProfileCard />
+      <Profile />
     </div>
   );
 }

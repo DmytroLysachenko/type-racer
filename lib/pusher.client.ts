@@ -30,7 +30,7 @@ function getIdentity() {
   }
 }
 
-export function getPusherClient() {
+function getPusherClient() {
   if (client) return client;
   const me = getIdentity();
 
@@ -60,7 +60,7 @@ export function getPusherClient() {
   return client;
 }
 
-export function getRoundPresence(roundId: number) {
+function getRoundPresence(roundId: number) {
   const name = chanName(roundId);
   if (channels.has(name)) return channels.get(name)!;
 

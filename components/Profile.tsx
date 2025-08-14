@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { usePlayer } from "@/lib/hooks/usePlayer";
 
-export function ProfileCard() {
+export function Profile() {
   const { player, updateName } = usePlayer();
   const [name, setName] = useState("");
 
@@ -22,14 +22,26 @@ export function ProfileCard() {
 
   return (
     <div className="p-4">
-      <div className="font-medium mb-2">Your profile</div>
+      <label
+        className="font-medium mb-2"
+        htmlFor="profile-name"
+      >
+        Your profile
+      </label>
       <div className="flex items-center gap-2">
         <input
+          id="profile-name"
+          data-testid="profile-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="flex-1"
         />
-        <button onClick={() => updateName(name)}>Save</button>
+        <button
+          data-testid="save-profile"
+          onClick={() => updateName(name)}
+        >
+          Save
+        </button>
       </div>
     </div>
   );

@@ -6,19 +6,25 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --runInBand"
   },
   "dependencies": {
+    "@testing-library/jest-dom": "^6.7.0",
+    "jest-environment-jsdom": "^30.0.5",
     "next": "15.4.6",
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "zod": "^4.0.17"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",

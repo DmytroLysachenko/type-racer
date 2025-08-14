@@ -40,34 +40,39 @@ export const db: DB = g.__DB ?? (g.__DB = create());
 
 export function upsertPlayer(id: string, name: string): Player {
   const now = Date.now();
-  const e = db.players.get(id);
-  if (e) {
-    e.name = name;
-    e.lastSeenAt = now;
-    return e;
+  const player = db.players.get(id);
+
+  if (player) {
+    player.name = name;
+    player.lastSeenAt = now;
+    return player;
   }
-  const p: Player = {
+
+  const updatedPlayer: Player = {
     id,
     name,
     createdAt: now,
     lastSeenAt: now,
     lifetime: { roundsPlayed: 0, avgWpm: 0, avgAccuracy: 1, bestWpm: 0 },
   };
-  db.players.set(id, p);
-  return p;
+
+  db.players.set(id, updatedPlayer);
+
+  return updatedPlayer;
 }
 
 export function finishRound(playerId: string, wpm: number, accuracy: number) {
-  const p = db.players.get(playerId);
+  const player = db.players.get(playerId);
 
-  if (!p) return;
+  if (!player) return;
 
-  const L = p.lifetime;
-  const n = L.roundsPlayed;
+  const playerLifetime = player.lifetime;
+  const n = playerLifetime.roundsPlayed;
 
-  L.roundsPlayed = n + 1;
-  L.avgWpm = (L.avgWpm * n + wpm) / (n + 1);
-  L.avgAccuracy = (L.avgAccuracy * n + accuracy) / (n + 1);
-  L.bestWpm = Math.max(L.bestWpm, wpm);
-  p.lastSeenAt = Date.now();
+  playerLifetime.roundsPlayed = n + 1;
+  playerLifetime.avgWpm = (playerLifetime.avgWpm * n + wpm) / (n + 1);
+  playerLifetime.avgAccuracy =
+    (playerLifetime.avgAccuracy * n + accuracy) / (n + 1);
+  playerLifetime.bestWpm = Math.max(playerLifetime.bestWpm, wpm);
+  player.lastSeenAt = Date.now();
 }
