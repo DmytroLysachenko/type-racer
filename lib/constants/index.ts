@@ -1,4 +1,3 @@
-export const ROUND_SECONDS = 20;
 export const SENTENCES = [
   "The quick brown fox jumps over the lazy dog as the sun sets.",
   "Typing is a skill that takes practice to master with great patience.",
@@ -18,3 +17,12 @@ export const SENTENCES = [
   "The best way to predict the future is to simply go out and create it.",
   "If you want to live a happy life, tie it to a goal, not people.",
 ];
+
+export const ROUND_SECONDS = 20;
+export const CHANNEL = "typing-arena";
+export const EVENT_FINISH = "finish";
+
+/** throttling/heartbeat */
+export const MIN_SEND_MS = 2000; // 1.5s throttle
+export const TRAIL_DEBOUNCE_MS = 300; // trailing send after typing pauses
+export const HEARTBEAT_MS = 7000; // sparse keep-alive

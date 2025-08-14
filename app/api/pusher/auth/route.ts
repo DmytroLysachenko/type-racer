@@ -5,7 +5,6 @@ import { pusherServer } from "@/lib/pusher.server";
 export async function POST(req: NextRequest) {
   // Pusher sends socket_id & channel_name in the POST body (form-encoded)
   const body = await req.formData();
-
   const socket_id = body.get("socket_id");
   const channel_name = body.get("channel_name");
 

@@ -22,14 +22,53 @@ export function usePlayer() {
     }
   }, []);
 
+  // listen for updates from this tab (custom event) and other tabs (storage)
+  useEffect(() => {
+    const onLocalUpdate = (e: Event) => {
+      const p = (e as CustomEvent<PlayerLocal>).detail;
+      setPlayer(p);
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY && e.newValue) setPlayer(JSON.parse(e.newValue));
+    };
+
+    window.addEventListener(
+      "typearena:player-updated",
+      onLocalUpdate as EventListener
+    );
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(
+        "typearena:player-updated",
+        onLocalUpdate as EventListener
+      );
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   const updateName = (name: string) => {
     if (!player) return;
 
-    const updatedPlayer = { ...player, name };
+    const p = { ...player, name };
 
-    localStorage.setItem(KEY, JSON.stringify(updatedPlayer));
+    localStorage.setItem(KEY, JSON.stringify(p));
 
-    setPlayer(updatedPlayer);
+    setPlayer(p);
+
+    // notify other hook instances in this tab immediately
+    window.dispatchEvent(
+      new CustomEvent("typearena:player-updated", { detail: p })
+    );
+
+    // let the server know (so future rounds & history use the new name)
+    fetch("/api/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    }).catch((err) => {
+      console.error(err);
+    });
   };
 
   return { player, updateName };

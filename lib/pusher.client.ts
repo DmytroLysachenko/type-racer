@@ -13,7 +13,6 @@ export type ProgressPayload = {
 };
 
 let client: Pusher | null = null;
-
 const channels = new Map<string, Channel>();
 const ready = new Set<string>();
 const pendingLast = new Map<string, ProgressPayload>();
@@ -24,11 +23,8 @@ function chanName(roundId: number) {
 
 function getIdentity() {
   try {
-    const player = JSON.parse(
-      localStorage.getItem("typearena-player") || "null"
-    );
-
-    return { id: player?.id ?? "anon", name: player?.name ?? "Guest" };
+    const p = JSON.parse(localStorage.getItem("typearena-player") || "null");
+    return { id: p?.id ?? "anon", name: p?.name ?? "Guest" };
   } catch {
     return { id: "anon", name: "Guest" };
   }
@@ -36,8 +32,8 @@ function getIdentity() {
 
 export function getPusherClient() {
   if (client) return client;
-
   const me = getIdentity();
+
   client = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
     cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     channelAuthorization: {
@@ -50,12 +46,10 @@ export function getPusherClient() {
   });
 
   // Reconnect on local name change so presence identity refreshes
-  window.addEventListener("typearena:player-updated", () => {
+  window.addEventListener("typearena:player-updated", (e: any) => {
     try {
       client?.disconnect();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
     client = null;
     channels.clear();
     ready.clear();
@@ -70,32 +64,67 @@ export function getRoundPresence(roundId: number) {
   const name = chanName(roundId);
   if (channels.has(name)) return channels.get(name)!;
 
-  const ch = getPusherClient().subscribe(name);
-  channels.set(name, ch);
+  const channel = getPusherClient().subscribe(name);
+  channels.set(name, channel);
 
-  ch.bind("pusher:subscription_succeeded", (members: any) => {
+  channel.bind("pusher:subscription_succeeded", (members: any) => {
     ready.add(name);
 
     const buffered = pendingLast.get(name);
     if (buffered) {
       try {
-        ch.trigger("client-progress", buffered);
+        channel.trigger("client-progress", buffered);
       } finally {
         pendingLast.delete(name);
       }
     }
   });
 
-  return ch;
+  return channel;
+}
+
+export function bindRound(
+  roundId: number,
+  handlers: {
+    onSubscriptionSucceeded?: (members: any) => void;
+    onMemberAdded?: (member: any) => void;
+    onMemberRemoved?: (member: any) => void;
+    onProgress?: (payload: ProgressPayload) => void;
+  }
+) {
+  const channel = getRoundPresence(roundId);
+
+  const unsubs: Array<() => void> = [];
+
+  const add = (evt: string, fn: (...a: any[]) => void) => {
+    channel.bind(evt, fn as any);
+    unsubs.push(() => channel.unbind(evt, fn as any));
+  };
+
+  if (handlers.onSubscriptionSucceeded)
+    add("pusher:subscription_succeeded", handlers.onSubscriptionSucceeded);
+
+  if (handlers.onMemberAdded)
+    add("pusher:member_added", handlers.onMemberAdded);
+
+  if (handlers.onMemberRemoved)
+    add("pusher:member_removed", handlers.onMemberRemoved);
+
+  if (handlers.onProgress)
+    add("client-progress", (d: any) => {
+      handlers.onProgress!(d);
+    });
+
+  return () => unsubs.forEach((u) => u());
 }
 
 export function sendProgress(roundId: number, payload: ProgressPayload) {
   const name = chanName(roundId);
-  const ch = getRoundPresence(roundId);
+  const channel = getRoundPresence(roundId);
   if (!ready.has(name)) {
     pendingLast.set(name, payload);
 
     return;
   }
-  ch.trigger("client-progress", payload);
+  channel.trigger("client-progress", payload);
 }

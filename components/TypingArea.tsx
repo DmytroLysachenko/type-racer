@@ -19,15 +19,17 @@ export function TypingArea({
     name,
     sentence,
     roundId: round.id,
+    secondsLeft,
   });
 
   return (
-    <div className={`rounded-2xl p-4`}>
+    <div className=" p-4">
       <div className="mb-3 text-lg leading-7">
         {sentence.split("").map((ch, i) => {
           const typedCh = typed[i];
           const state =
             typedCh == null ? "pending" : typedCh === ch ? "correct" : "wrong";
+
           return (
             <span
               key={i}
@@ -46,7 +48,7 @@ export function TypingArea({
       </div>
 
       <input
-        className="px-3 py-2 rounded-xl w-full my-4"
+        className="px-3 py-2  w-full my-4"
         id="typing"
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
