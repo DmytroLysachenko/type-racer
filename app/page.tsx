@@ -26,7 +26,7 @@ export default function Page() {
     });
 
     return () => {};
-  }, [player?.id]);
+  }, [player]);
 
   const roundIdRef = useRef(round.id);
   useEffect(() => {

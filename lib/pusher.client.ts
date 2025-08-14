@@ -1,5 +1,6 @@
 "use client";
 
+import { Member } from "@/components/ScoreTable";
 import Pusher, { Channel } from "pusher-js";
 
 export type ProgressPayload = {
@@ -46,7 +47,7 @@ function getPusherClient() {
   });
 
   // Reconnect on local name change so presence identity refreshes
-  window.addEventListener("typearena:player-updated", (e: any) => {
+  window.addEventListener("typearena:player-updated", () => {
     try {
       client?.disconnect();
     } catch {}
@@ -67,7 +68,7 @@ function getRoundPresence(roundId: number) {
   const channel = getPusherClient().subscribe(name);
   channels.set(name, channel);
 
-  channel.bind("pusher:subscription_succeeded", (members: any) => {
+  channel.bind("pusher:subscription_succeeded", () => {
     ready.add(name);
 
     const buffered = pendingLast.get(name);
@@ -86,9 +87,9 @@ function getRoundPresence(roundId: number) {
 export function bindRound(
   roundId: number,
   handlers: {
-    onSubscriptionSucceeded?: (members: any) => void;
-    onMemberAdded?: (member: any) => void;
-    onMemberRemoved?: (member: any) => void;
+    onSubscriptionSucceeded?: (members: Member[]) => void;
+    onMemberAdded?: (member: Member) => void;
+    onMemberRemoved?: (member: Member) => void;
     onProgress?: (payload: ProgressPayload) => void;
   }
 ) {

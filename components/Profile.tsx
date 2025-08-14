@@ -9,7 +9,7 @@ export function Profile() {
 
   useEffect(() => {
     if (player) setName(player.name);
-  }, [player?.id]);
+  }, [player]);
 
   if (!player) {
     return (

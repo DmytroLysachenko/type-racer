@@ -1,16 +1,30 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRound } from "@/lib/hooks/useRound";
 import { bindRound } from "@/lib/pusher.client";
 
-export type Row = {
+interface Row {
   playerId: string;
   name: string;
   typed: string;
   wpm: number;
   accuracy: number;
-};
+}
+
+interface LocalProgressEventDetails {
+  roundId: number;
+  playerId: string;
+  name: string;
+  typed: number;
+  wpm: number;
+  accuracy: number;
+}
+
+export interface Member {
+  id: string;
+  info: { name: string };
+}
 
 export function ScoreTable({ selfId }: { selfId?: string }) {
   const { round } = useRound();
@@ -24,10 +38,10 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
   // Presence + client events
   useEffect(() => {
     const off = bindRound(round.id, {
-      onSubscriptionSucceeded: (members) => {
+      onSubscriptionSucceeded: (members: any) => {
         const seeded: Row[] = [];
 
-        members.each((member: any) => {
+        members.each((member: Member) => {
           const name = member.info?.name ?? "Guest";
           seeded.push({
             playerId: member.id,
@@ -40,7 +54,7 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
         setRows(seeded);
       },
 
-      onMemberAdded: (member: any) => {
+      onMemberAdded: (member: Member) => {
         setRows((prev) =>
           prev.some((row) => row.playerId === member.id)
             ? prev
@@ -56,10 +70,17 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
               ]
         );
       },
-      onMemberRemoved: (member: any) => {
+      onMemberRemoved: (member: Member) => {
         setRows((prev) => prev.filter((r) => r.playerId !== member.id));
       },
-      onProgress: (payload: any) => {
+      onProgress: (payload: {
+        playerId: string;
+        roundId: number;
+        name: string;
+        typed: string;
+        wpm: number;
+        accuracy: number;
+      }) => {
         if (+payload.roundId !== round.id) return; // <-- coerced
 
         setRows((prev) => {
@@ -90,18 +111,18 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
 
   // Local echo for instant self-row updates
   useEffect(() => {
-    const onLocal = (e: Event) => {
-      const details = (e as CustomEvent<any>).detail;
+    const onLocal = (e: CustomEvent<LocalProgressEventDetails>) => {
+      const details = e.detail;
 
       if (details.roundId !== round.id) return;
 
       setRows((prev) => {
         const idx = prev.findIndex((row) => row.playerId === details.playerId);
 
-        const row = {
+        const row: Row = {
           playerId: details.playerId,
           name: details.name,
-          typed: details.typed,
+          typed: details.typed.toString(),
           wpm: details.wpm,
           accuracy: details.accuracy,
         };
