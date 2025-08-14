@@ -44,10 +44,12 @@ pnpm install
 Create `.env` with:
 
 ```env
+
 PUSHER_APP_ID=your-app-id
-PUSHER_KEY=your-key
 PUSHER_SECRET=your-secret
-PUSHER_CLUSTER=your-cluster
+NEXT_PUBLIC_PUSHER_KEY=your-key
+NEXT_PUBLIC_PUSHER_CLUSTER=your-cluster
+
 ```
 
 ### 3. Run Dev Server
