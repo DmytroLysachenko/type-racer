@@ -96,9 +96,9 @@ export function bindRound(
 
   const unsubs: Array<() => void> = [];
 
-  const add = (evt: string, fn: (...a: any[]) => void) => {
-    channel.bind(evt, fn as any);
-    unsubs.push(() => channel.unbind(evt, fn as any));
+  const add = (event: string, fn: (...a: any[]) => void) => {
+    channel.bind(event, fn as any);
+    unsubs.push(() => channel.unbind(event, fn as any));
   };
 
   if (handlers.onSubscriptionSucceeded)

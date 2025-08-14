@@ -13,20 +13,22 @@ export function usePlayer() {
     if (stored) {
       setPlayer(JSON.parse(stored));
     } else {
-      const p = {
+      const newPlayer = {
         id: crypto.randomUUID(),
         name: "Guest-" + Math.floor(Math.random() * 1000),
       };
-      localStorage.setItem(KEY, JSON.stringify(p));
-      setPlayer(p);
+
+      localStorage.setItem(KEY, JSON.stringify(newPlayer));
+
+      setPlayer(newPlayer);
     }
   }, []);
 
   // listen for updates from this tab (custom event) and other tabs (storage)
   useEffect(() => {
     const onLocalUpdate = (e: Event) => {
-      const p = (e as CustomEvent<PlayerLocal>).detail;
-      setPlayer(p);
+      const newPlayer = (e as CustomEvent<PlayerLocal>).detail;
+      setPlayer(newPlayer);
     };
 
     const onStorage = (e: StorageEvent) => {
@@ -37,12 +39,15 @@ export function usePlayer() {
       "typearena:player-updated",
       onLocalUpdate as EventListener
     );
+
     window.addEventListener("storage", onStorage);
+
     return () => {
       window.removeEventListener(
         "typearena:player-updated",
         onLocalUpdate as EventListener
       );
+
       window.removeEventListener("storage", onStorage);
     };
   }, []);
@@ -50,22 +55,22 @@ export function usePlayer() {
   const updateName = (name: string) => {
     if (!player) return;
 
-    const p = { ...player, name };
+    const newPlayer = { ...player, name };
 
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(KEY, JSON.stringify(newPlayer));
 
-    setPlayer(p);
+    setPlayer(newPlayer);
 
     // notify other hook instances in this tab immediately
     window.dispatchEvent(
-      new CustomEvent("typearena:player-updated", { detail: p })
+      new CustomEvent("typearena:player-updated", { detail: newPlayer })
     );
 
     // let the server know (so future rounds & history use the new name)
     fetch("/api/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
+      body: JSON.stringify(newPlayer),
     }).catch((err) => {
       console.error(err);
     });

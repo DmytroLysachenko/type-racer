@@ -1,5 +1,6 @@
-import { upsertPlayer } from "@/lib/store";
 import { NextResponse } from "next/server";
+
+import { upsertPlayer } from "@/lib/store";
 
 export async function POST(req: Request) {
   const ctype = req.headers.get("content-type") ?? "";

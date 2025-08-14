@@ -98,15 +98,20 @@ npx playwright test --debug
 
 ## 📝 Future Improvements (if productionizing)
 
-1. **Persistent storage** (PostgreSQL, Redis) for stats.
-2. **Authentication** (e.g., NextAuth).
-3. **Sorting & pagination** for score table.
-4. **Spectator mode** for non-playing users.
-5. **Live sentence source** from external API.
-6. **Better error handling** & fallback UIs.
-7. **Analytics & monitoring** (Sentry, LogRocket).
-8. **CI pipeline** with automated tests on PR.
-9. **Code modularity** to be improved for better code reusability
+1. **Code modularity** to be improved for better code reusability.
+2. **Improving code readability** for simplifying code understanding (variables names).
+3. **Improving typing system.** Currently there are cases of using any in the code. Stricter system should be enforced.
+4. **Code of conduct** should be added for persistance around project code.
+5. **Additional instruments** for code quality should be added such as husky.
+6. **Code coverage** should be increased and cover all edge cases.
+7. **Persistent storage** (PostgreSQL, Redis) for stats.
+8. **Authentication** (e.g., NextAuth).
+9. **Sorting & pagination** for score table.
+10. **Spectator mode** for non-playing users.
+11. **Live sentence source** from external API.
+12. **Better error handling** & fallback UIs.
+13. **Analytics & monitoring** (Sentry, LogRocket).
+14. **CI pipeline** with automated tests on PR.
 
 ---
 

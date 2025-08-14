@@ -27,22 +27,28 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
       onSubscriptionSucceeded: (members) => {
         const seeded: Row[] = [];
 
-        members.each((m: any) => {
-          const name = m.info?.name ?? "Guest";
-          seeded.push({ playerId: m.id, name, typed: "", wpm: 0, accuracy: 1 });
+        members.each((member: any) => {
+          const name = member.info?.name ?? "Guest";
+          seeded.push({
+            playerId: member.id,
+            name,
+            typed: "",
+            wpm: 0,
+            accuracy: 1,
+          });
         });
         setRows(seeded);
       },
 
-      onMemberAdded: (m: any) => {
+      onMemberAdded: (member: any) => {
         setRows((prev) =>
-          prev.some((r) => r.playerId === m.id)
+          prev.some((row) => row.playerId === member.id)
             ? prev
             : [
                 ...prev,
                 {
-                  playerId: m.id,
-                  name: m.info?.name ?? "Guest",
+                  playerId: member.id,
+                  name: member.info?.name ?? "Guest",
                   typed: "",
                   wpm: 0,
                   accuracy: 1,
@@ -50,24 +56,31 @@ export function ScoreTable({ selfId }: { selfId?: string }) {
               ]
         );
       },
-      onMemberRemoved: (m: any) => {
-        setRows((prev) => prev.filter((r) => r.playerId !== m.id));
+      onMemberRemoved: (member: any) => {
+        setRows((prev) => prev.filter((r) => r.playerId !== member.id));
       },
-      onProgress: (d: any) => {
-        if (+d.roundId !== round.id) return; // <-- coerced
+      onProgress: (payload: any) => {
+        if (+payload.roundId !== round.id) return; // <-- coerced
 
         setRows((prev) => {
-          const idx = prev.findIndex((r) => r.playerId === d.playerId);
+          const idx = prev.findIndex(
+            (row) => row.playerId === payload.playerId
+          );
+
           const row = {
-            playerId: d.playerId,
-            name: d.name,
-            typed: d.typed,
-            wpm: d.wpm,
-            accuracy: d.accuracy,
+            playerId: payload.playerId,
+            name: payload.name,
+            typed: payload.typed,
+            wpm: payload.wpm,
+            accuracy: payload.accuracy,
           };
+
           if (idx === -1) return [...prev, row];
+
           const next = [...prev];
+
           next[idx] = row;
+
           return next;
         });
       },
