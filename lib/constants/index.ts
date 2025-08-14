@@ -1,0 +1,20 @@
+export const ROUND_SECONDS = 20;
+export const SENTENCES = [
+  "The quick brown fox jumps over the lazy dog as the sun sets.",
+  "Typing is a skill that takes practice to master with great patience.",
+  "Clean and simple code is always direct and easy for developers to read.",
+  "Tests are the vital safety net that allows you to move with great speed.",
+  "Simplicity is an essential prerequisite for achieving ultimate reliability.",
+  "A journey of a thousand miles always begins with a single step forward.",
+  "The secret to a good day is having a great cup of coffee in the morning.",
+  "Learning to code is a journey that is filled with a thousand keystrokes.",
+  "Debugging is a lot like being a detective in a confusing crime movie.",
+  "The best kind of code to write is the one that is not there at all.",
+  "The future truly belongs to those who believe in the beauty of their dreams.",
+  "Success is not final, and failure is not fatal, so keep going.",
+  "Change your thoughts and you will be able to change your entire world.",
+  "The greatest glory is living is not in never falling, but in rising.",
+  "In the middle of every difficulty lies a great and new opportunity.",
+  "The best way to predict the future is to simply go out and create it.",
+  "If you want to live a happy life, tie it to a goal, not people.",
+];
