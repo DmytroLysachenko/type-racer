@@ -1,0 +1,6 @@
+allowBuilds:
+  "@parcel/watcher": true
+  "@tailwindcss/oxide": true
+  unrs-resolver: true
+overrides:
+  "diff@4.0.2": 4.0.4
