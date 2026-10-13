@@ -1,34 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { pusherServer } from "@/lib/pusher.server";
+import { getPusherServer } from "@/lib/pusher.server";
+import { getCurrentRound } from "@/lib/game/rounds";
+import { readGuestSession } from "@/lib/guest-session";
+import { readLimitedText } from "@/lib/http/read-limited-text";
 
 export async function POST(req: NextRequest) {
-  // Pusher sends socket_id & channel_name in the POST body (form-encoded)
-  const body = await req.formData();
-  const socket_id = body.get("socket_id");
-  const channel_name = body.get("channel_name");
-
-  if (!socket_id || !channel_name) {
+  const server = getPusherServer();
+  if (!server)
     return NextResponse.json(
-      { error: "Missing socket_id or channel_name" },
-      { status: 400 }
+      { error: "Live room unavailable" },
+      { status: 503 },
+    );
+  const origin = req.headers.get("origin");
+  if (origin && origin !== req.nextUrl.origin)
+    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  if (
+    !(req.headers.get("content-type") ?? "").includes(
+      "application/x-www-form-urlencoded",
+    )
+  )
+    return NextResponse.json({ error: "Expected form data" }, { status: 400 });
+  const raw = await readLimitedText(req, 512);
+  if (raw === null)
+    return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  const body = new URLSearchParams(raw);
+  const socketId = body.get("socket_id");
+  const channelName = body.get("channel_name");
+  const guest = readGuestSession(req);
+  const round =
+    typeof channelName === "string"
+      ? /^presence-round-(\d+)$/.exec(channelName)
+      : null;
+  const roundId = round ? Number(round[1]) : NaN;
+  const currentRound = getCurrentRound().id;
+  if (
+    typeof socketId !== "string" ||
+    body.getAll("socket_id").length !== 1 ||
+    body.getAll("channel_name").length !== 1 ||
+    !/^\d+\.\d+$/.test(socketId) ||
+    !Number.isSafeInteger(roundId) ||
+    roundId < currentRound - 2 ||
+    roundId > currentRound + 1 ||
+    !guest
+  ) {
+    return NextResponse.json(
+      { error: "Invalid authorization request" },
+      { status: 400 },
     );
   }
-
-  // We pass identity via query string from the client (reliable across pusher-js versions)
-  const { searchParams } = new URL(req.url);
-
-  const user_id = (searchParams.get("user_id") || "anon").toString();
-  const name = (searchParams.get("name") || "Guest").toString();
-
-  const auth = pusherServer.authorizeChannel(
-    socket_id.toString(),
-    channel_name.toString(),
-    {
-      user_id,
-      user_info: { name },
-    }
-  );
-
-  return NextResponse.json(auth);
+  try {
+    return NextResponse.json(
+      server.authorizeChannel(socketId, channelName as string, {
+        user_id: guest!.id,
+        user_info: { name: guest!.name },
+      }),
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Live room unavailable" },
+      { status: 503 },
+    );
+  }
 }
