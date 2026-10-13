@@ -1,0 +1,43 @@
+/* Portable semantic tokens. Theme values change here; callers use the same names. */
+:root {
+  color-scheme: light;
+  --color-canvas: #f5f7f8;
+  --color-surface: #fff;
+  --color-text: #192c35;
+  --color-text-muted: #52646d;
+  --color-border: #d9e2e5;
+  --color-accent: #087f78;
+  --color-accent-soft: #d9f2ec;
+  --color-danger: #b63d4b;
+  --font-body: Arial, Helvetica, sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --shadow-surface: 0 18px 45px rgba(13, 43, 50, 0.06);
+  --focus-width: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-canvas: #102027;
+    --color-surface: #172b32;
+    --color-text: #edf5f4;
+    --color-text-muted: #b3c7c8;
+    --color-border: #385158;
+    --color-accent: #77d4c5;
+    --color-accent-soft: #234c4b;
+    --color-danger: #ff9ba5;
+    --shadow-surface: 0 18px 45px rgba(0, 0, 0, 0.13);
+  }
+}
