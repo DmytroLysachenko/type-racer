@@ -1,174 +1,166 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { computeMetrics } from "@/lib/utils/metrics";
-
-import { HEARTBEAT_MS, MIN_SEND_MS, TRAIL_DEBOUNCE_MS } from "../constants";
-import { sendProgress } from "../pusher.client";
-
-type UseTypingProgressArgs = {
-  playerId: string;
-  name: string;
-  sentence: string;
-  roundId: number;
-  secondsLeft: number;
-};
+import { computeMetrics, type Metrics } from "@/lib/game/metrics";
+import { saveRace } from "@/lib/game/history";
+import {
+  createRace,
+  finishRace,
+  inputRace,
+  tickRace,
+} from "@/lib/game/session";
+import { sendProgress } from "@/lib/pusher.client";
+import type { ProgressPayload } from "@/lib/game/progress";
+import type { RoundPhase } from "@/lib/game/rounds";
 
 export function useTypingProgress({
   playerId,
   name,
   sentence,
   roundId,
-  secondsLeft,
-}: UseTypingProgressArgs) {
-  const [typed, setTyped] = useState("");
-  const typedRef = useRef("");
-  const lastProgressMsRef = useRef(0);
-  const heartbeatIdRef = useRef<number | null>(null);
-  const trailTimeoutIdRef = useRef<number | null>(null);
-  const startedAtMsRef = useRef<number>(Date.now());
-  const lastSentLengthRef = useRef(0);
-  const lastSentAccuracyRef = useRef(1);
-  const finishPostedRef = useRef(false);
-
-  const metrics = useMemo(() => {
-    const elapsedMs = Date.now() - startedAtMsRef.current;
-    return computeMetrics(sentence, typed, Math.max(1, elapsedMs));
-  }, [sentence, typed]);
-
-  // reset when round or sentence changes
+  phase,
+  remainingMs,
+}: {
+  playerId: string;
+  name: string;
+  sentence: string;
+  roundId: number;
+  phase: RoundPhase;
+  remainingMs: number;
+}) {
+  const [race, setRace] = useState(createRace);
+  const raceRef = useRef(race);
   useEffect(() => {
-    setTyped("");
-    typedRef.current = "";
-    lastProgressMsRef.current = 0;
-    startedAtMsRef.current = Date.now();
-    lastSentLengthRef.current = 0;
-    lastSentAccuracyRef.current = 1;
-    finishPostedRef.current = false;
-    if (heartbeatIdRef.current) clearInterval(heartbeatIdRef.current);
-    if (trailTimeoutIdRef.current) clearTimeout(trailTimeoutIdRef.current);
-  }, [roundId, sentence]);
+    raceRef.current = race;
+  }, [race]);
+  const durationRef = useRef<number | null>(null);
+  const lastSentAt = useRef(0);
+  const savedResult = useRef(false);
 
-  // keep ref in sync
-  useEffect(() => {
-    typedRef.current = typed;
-  }, [typed]);
-
-  // local echo so UI/tables feel instant
-  useEffect(() => {
-    const detail = {
-      playerId,
-      name,
-      roundId,
-      typed,
-      wpm: metrics.wpm,
-      accuracy: metrics.accuracy,
-    };
-    window.dispatchEvent(
-      new CustomEvent("typearena:local-progress", { detail })
-    );
-  }, [typed, metrics.wpm, metrics.accuracy, roundId, playerId, name]);
-
-  /** decide if change is "meaningful" enough to send */
-  const hasMeaningfulDelta = useCallback(() => {
-    const current = typedRef.current;
-    const lenNow = current.length;
-    const atWordBoundary = /\s$/.test(current);
-    const accNow = computeMetrics(sentence, current, 1).accuracy;
-    const lengthJump = lenNow >= lastSentLengthRef.current + 5;
-    const accuracyJump = Math.abs(accNow - lastSentAccuracyRef.current) >= 0.02;
-    return lengthJump || accuracyJump || atWordBoundary;
-  }, [sentence]);
-
-  /** single place that emits progress (throttled unless force=true) */
-  const emitProgress = useCallback(
-    (force = false) => {
-      const now = Date.now();
-      const tooSoon = now - lastProgressMsRef.current < MIN_SEND_MS;
-
-      // don't emit while tab hidden unless it's a forced trailing send
-      if (!force && document.visibilityState === "hidden") return;
-      if (!force && (tooSoon || !hasMeaningfulDelta())) return;
-
-      const current = typedRef.current;
-      const accNow = computeMetrics(sentence, current, 1).accuracy;
-
-      // commit last-sent markers
-      lastSentLengthRef.current = current.length;
-      lastSentAccuracyRef.current = accNow;
-      lastProgressMsRef.current = now;
-
-      // compact payload
-      sendProgress(roundId, {
-        playerId,
-        name,
-        roundId,
-        typed: current,
-        wpm: computeMetrics(
-          sentence,
-          current,
-          Math.max(1, now - startedAtMsRef.current)
-        ).wpm,
-        accuracy: accNow,
+  const saveResult = useCallback(
+    (result: Metrics) => {
+      if (savedResult.current) return;
+      savedResult.current = true;
+      saveRace({
+        id: crypto.randomUUID(),
+        finishedAt: Date.now(),
+        sentence,
+        metrics: result,
       });
     },
-    [hasMeaningfulDelta, name, playerId, roundId, sentence]
+    [sentence],
   );
 
-  // trailing send + heartbeat scheduler
+  const setTyped = useCallback(
+    (proposed: string) => {
+      if (phase !== "racing" || remainingMs <= 0) return;
+      if (durationRef.current === null) {
+        // Only a valid first character can start this player's elapsed time.
+        if (Array.from(proposed).length !== 1) return;
+        durationRef.current = remainingMs;
+      }
+      setRace((previous) =>
+        inputRace(
+          previous,
+          sentence,
+          proposed,
+          performance.now(),
+          durationRef.current!,
+        ),
+      );
+    },
+    [phase, remainingMs, sentence],
+  );
+
   useEffect(() => {
-    if (trailTimeoutIdRef.current) clearTimeout(trailTimeoutIdRef.current);
+    if (phase === "results") {
+      setRace((previous) =>
+        finishRace(previous, sentence, durationRef.current ?? 0),
+      );
+    }
+  }, [phase, sentence]);
 
-    trailTimeoutIdRef.current = window.setTimeout(
-      () => emitProgress(true),
-      TRAIL_DEBOUNCE_MS
-    );
-
-    if (heartbeatIdRef.current) clearInterval(heartbeatIdRef.current);
-
-    heartbeatIdRef.current = window.setInterval(() => {
-      if (document.visibilityState === "hidden") return;
-      emitProgress(false);
-    }, HEARTBEAT_MS);
-
+  useEffect(() => {
+    if (race.phase !== "running") return;
+    const update = () =>
+      setRace((previous) =>
+        tickRace(
+          previous,
+          sentence,
+          performance.now(),
+          durationRef.current ?? 0,
+        ),
+      );
+    const timer = window.setInterval(update, 250);
+    document.addEventListener("visibilitychange", update);
     return () => {
-      if (trailTimeoutIdRef.current) clearTimeout(trailTimeoutIdRef.current);
-      if (heartbeatIdRef.current) clearInterval(heartbeatIdRef.current);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
     };
-  }, [typed, emitProgress]);
+  }, [race.phase, sentence]);
 
-  // finalization (persist once when round ends)
-  useEffect(() => {
-    if (secondsLeft > 0 || finishPostedRef.current) return;
-
-    finishPostedRef.current = true;
-
-    fetch("/api/finish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerId,
-        roundId,
-        wpm: metrics.wpm,
-        accuracy: metrics.accuracy,
-      }),
-    }).catch((err) => {
-      console.error(err);
-    });
-  }, [secondsLeft, playerId, roundId, metrics.wpm, metrics.accuracy]);
-
-  // hello on round join (kept for your existing backend expectations)
-  useEffect(() => {
-    sendProgress(roundId, {
+  const metrics =
+    race.result ?? computeMetrics(sentence, race.typed, race.elapsedMs, race);
+  const progress: ProgressPayload = useMemo(
+    () => ({
       playerId,
       name,
       roundId,
-      typed: "",
-      wpm: 0,
-      accuracy: 1,
-      hello: true,
-    });
-  }, [roundId, playerId, name]);
+      typed: race.typed,
+      totalTypedChars: race.totalTypedChars,
+      mistakes: race.mistakes,
+      elapsedMs: metrics.elapsedMs,
+      completed: race.phase === "completed",
+    }),
+    [
+      playerId,
+      name,
+      roundId,
+      race.typed,
+      race.totalTypedChars,
+      race.mistakes,
+      race.phase,
+      metrics.elapsedMs,
+    ],
+  );
+  useEffect(() => {
+    if (race.phase === "ready" || document.visibilityState === "hidden") return;
+    const now = performance.now();
+    if (race.phase === "running" && now - lastSentAt.current < 2000) return;
+    lastSentAt.current = now;
+    sendProgress(roundId, progress);
+  }, [race.phase, roundId, progress]);
 
-  return { typed, setTyped, metrics };
+  useEffect(() => {
+    if (race.phase !== "completed" || !race.result || savedResult.current)
+      return;
+    saveResult(race.result);
+  }, [race.phase, race.result, saveResult]);
+
+  // The page changes rooms at the boundary. Save an unfinished attempt before
+  // the old round unmounts, even when the timer callback has not run yet.
+  useEffect(
+    () => () => {
+      const last = raceRef.current;
+      if (
+        last.phase === "running" &&
+        last.startedAtMs !== null &&
+        performance.now() - last.startedAtMs >=
+          (durationRef.current ?? Infinity)
+      ) {
+        const ended = tickRace(
+          last,
+          sentence,
+          performance.now(),
+          durationRef.current ?? 0,
+        );
+        saveResult(
+          ended.result ?? finishRace(last, sentence, last.elapsedMs).result!,
+        );
+      }
+    },
+    [sentence, saveResult],
+  );
+
+  return { race, typed: race.typed, setTyped, metrics, progress };
 }

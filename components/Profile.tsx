@@ -1,48 +1,85 @@
 "use client";
-import { useEffect, useState } from "react";
 
-import { usePlayer } from "@/lib/hooks/usePlayer";
+import { useState } from "react";
+import { Button, TextField } from "@/components/ui";
+import type { PlayerLocal } from "@/lib/hooks/usePlayer";
 
-export function Profile() {
-  const { player, updateName } = usePlayer();
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    if (player) setName(player.name);
-  }, [player]);
-
-  if (!player) {
-    return (
-      <div className="p-4">
-        <div className="animate-pulse h-6 bg-white/10 rounded w-44 mb-2" />
-        <div className="animate-pulse h-9 bg-white/10 rounded" />
-      </div>
-    );
-  }
-
+export function Profile({
+  player,
+  updateName,
+}: {
+  player: PlayerLocal;
+  updateName: (name: string) => Promise<boolean>;
+}) {
+  const [message, setMessage] = useState("");
   return (
-    <div className="p-4">
-      <label
-        className="font-medium mb-2"
-        htmlFor="profile-name"
+    <ProfileForm
+      key={player.name}
+      player={player}
+      updateName={updateName}
+      message={message}
+      setMessage={setMessage}
+    />
+  );
+}
+
+function ProfileForm({
+  player,
+  updateName,
+  message,
+  setMessage,
+}: {
+  player: PlayerLocal;
+  updateName: (name: string) => Promise<boolean>;
+  message: string;
+  setMessage: (message: string) => void;
+}) {
+  const [name, setName] = useState(player.name);
+  const [saving, setSaving] = useState(false);
+  return (
+    <section className="profile-panel" aria-labelledby="profile-heading">
+      <p className="eyebrow">Your space</p>
+      <h2 id="profile-heading">Guest profile</h2>
+      <form
+        className="profile-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (saving) return;
+          setSaving(true);
+          setMessage("Saving…");
+          const saved = await updateName(name);
+          setMessage(
+            saved
+              ? "Name saved on this device."
+              : "Could not save the name. Use 1–32 characters and try again.",
+          );
+          setSaving(false);
+        }}
       >
-        Your profile
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          id="profile-name"
-          data-testid="profile-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="flex-1"
-        />
-        <button
-          data-testid="save-profile"
-          onClick={() => updateName(name)}
-        >
-          Save
-        </button>
-      </div>
-    </div>
+        <div className="profile-form-row">
+          <TextField
+            id="profile-name"
+            label="Display name"
+            className="profile-field"
+            data-testid="profile-name"
+            name="display-name"
+            autoComplete="off"
+            spellCheck={false}
+            value={name}
+            maxLength={32}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Button data-testid="save-profile" type="submit" pending={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+        <p className="profile-message" role="status">
+          {message}
+        </p>
+      </form>
+      <p className="muted">
+        No account is required. Your name and race history stay in this browser.
+      </p>
+    </section>
   );
 }
