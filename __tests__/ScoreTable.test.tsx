@@ -1,107 +1,125 @@
-import { render, screen, act } from "@testing-library/react";
-import React from "react";
+import { act, render, screen } from "@testing-library/react";
+import { ScoreTable } from "@/components/ScoreTable";
+import type { Member, Members, ProgressPayload } from "@/lib/pusher.client";
 
-// --- Mocks ---
-jest.mock("@/lib/hooks/useRound", () => ({
-  useRound: () => ({ round: { id: 1 } }),
-}));
-
-// We'll capture the handlers passed to bindRound so tests can trigger them.
-let lastHandlers: any = null;
+let handlers: {
+  onSubscriptionSucceeded?: (members: Members) => void;
+  onMemberAdded?: (member: Member) => void;
+  onMemberRemoved?: (member: Member) => void;
+  onProgress?: (payload: ProgressPayload, senderId: string) => void;
+  onStatus?: (status: string) => void;
+} = {};
 jest.mock("@/lib/pusher.client", () => ({
-  bindRound: (roundId: number, handlers: any) => {
-    lastHandlers = handlers;
-    // return off() cleanup
-    return () => {
-      lastHandlers = null;
-    };
+  liveConfigured: true,
+  bindRound: (_roundId: number, next: typeof handlers) => {
+    handlers = next;
+    return () => {};
   },
 }));
 
-// import *after* mocks
-import { ScoreTable } from "@/components/ScoreTable";
+const sentence = "hello world";
+const props = { selfId: "me", roundId: 1, sentence, phase: "racing" as const };
+const progress: ProgressPayload = {
+  playerId: "me",
+  name: "Me",
+  roundId: 1,
+  typed: "hello",
+  totalTypedChars: 5,
+  mistakes: 0,
+  elapsedMs: 1000,
+  completed: false,
+};
+const seed = () =>
+  act(() =>
+    handlers.onSubscriptionSucceeded?.({
+      each: (callback) =>
+        [
+          { id: "me", info: { name: "Me" } },
+          { id: "other", info: { name: "Other" } },
+        ].forEach(callback),
+    }),
+  );
 
-function seedMembers(...members: Array<{ id: string; name?: string }>) {
-  const fakeMembers = {
-    each: (fn: (m: any) => void) =>
-      members.forEach((m) =>
-        fn({ id: m.id, info: { name: m.name ?? "Guest" } })
+describe("multiplayer standings", () => {
+  test("shows connection and waiting states", () => {
+    render(<ScoreTable {...props} />);
+    expect(screen.getByText("Waiting for racers to join.")).toBeInTheDocument();
+    act(() => handlers.onStatus?.("connected"));
+    expect(screen.getByRole("status")).toHaveTextContent("Connected");
+  });
+  test("seeds presence and marks the current player", () => {
+    render(<ScoreTable {...props} />);
+    seed();
+    expect(screen.getByText("Me (you)")).toBeInTheDocument();
+    expect(screen.getByText("Other")).toBeInTheDocument();
+  });
+  test("calculates scores from bounded progress and ignores invalid events", () => {
+    render(<ScoreTable {...props} />);
+    seed();
+    act(() =>
+      handlers.onProgress?.(
+        { ...progress, playerId: "other", name: "Fake" },
+        "other",
       ),
-  };
-  act(() => lastHandlers.onSubscriptionSucceeded(fakeMembers));
-}
-
-function sendProgress(d: any) {
-  act(() => lastHandlers.onProgress(d));
-}
-
-describe("<ScoreTable />", () => {
-  test("renders empty state initially", () => {
-    render(<ScoreTable selfId="p1" />);
-    expect(screen.getByText(/No players yet/i)).toBeInTheDocument();
+    );
+    expect(screen.getByText("Other")).toBeInTheDocument();
+    expect(screen.queryByText("Fake")).not.toBeInTheDocument();
+    expect(screen.getByText("5 chars")).toBeInTheDocument();
+    expect(screen.getByText("60")).toBeInTheDocument();
+    act(() => handlers.onProgress?.(progress, "other"));
+    expect(screen.getByRole("row", { name: /Me \(you\)/ })).toHaveTextContent(
+      "0 chars",
+    );
+    act(() => handlers.onProgress?.({ ...progress, roundId: 2 }, "me"));
+    act(() =>
+      handlers.onProgress?.({ ...progress, playerId: "stranger" }, "other"),
+    );
+    expect(screen.queryByText("stranger")).not.toBeInTheDocument();
   });
-
-  test("seeds rows on subscription succeeded", () => {
-    render(<ScoreTable selfId="p1" />);
-    seedMembers({ id: "p1", name: "Alice" }, { id: "p2", name: "Bob" });
-
-    expect(screen.getByText("Alice (you)")).toBeInTheDocument();
-    expect(screen.getByText("Bob")).toBeInTheDocument();
+  test("shows results ranking and retains a departed racer's result", () => {
+    const { rerender } = render(<ScoreTable {...props} />);
+    seed();
+    act(() =>
+      handlers.onProgress?.(
+        {
+          ...progress,
+          playerId: "other",
+          name: "Other",
+          elapsedMs: 2000,
+          completed: true,
+        },
+        "other",
+      ),
+    );
+    rerender(
+      <ScoreTable {...props} phase="results" localProgress={progress} />,
+    );
+    expect(screen.getByText("Round results")).toBeInTheDocument();
+    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText("#2")).toBeInTheDocument();
+    act(() => handlers.onMemberRemoved?.({ id: "other" }));
+    expect(screen.getByText("Other (left)")).toBeInTheDocument();
   });
-
-  test("updates a row on progress and formats wpm/accuracy", () => {
-    render(<ScoreTable selfId="p1" />);
-    seedMembers({ id: "p1", name: "Alice" });
-
-    sendProgress({
-      roundId: 1,
-      playerId: "p1",
-      name: "Alice",
-      typed: "hello",
-      wpm: 73.6,
-      accuracy: 0.923,
-    });
-
-    // typed column
-    expect(screen.getByText("hello")).toBeInTheDocument();
-    // wpm rounded
-    expect(screen.getByText("74")).toBeInTheDocument();
-    // accuracy percent (0.923 -> 92%)
-    expect(screen.getByText("92%")).toBeInTheDocument();
-  });
-
-  test("local echo event updates instantly", () => {
-    render(<ScoreTable selfId="me" />);
-    seedMembers({ id: "me", name: "Me" });
-
-    const detail = {
-      roundId: 1,
-      playerId: "me",
-      name: "Me",
-      typed: "local",
-      wpm: 50,
-      accuracy: 0.8,
-    };
-
-    act(() => {
-      window.dispatchEvent(
-        new CustomEvent("typearena:local-progress", { detail })
-      );
-    });
-
-    expect(screen.getByText("local")).toBeInTheDocument();
-    expect(screen.getByText("50")).toBeInTheDocument();
-    expect(screen.getByText("80%")).toBeInTheDocument();
-  });
-
-  test("member added / removed adjusts rows", () => {
-    render(<ScoreTable />);
-    seedMembers({ id: "p1", name: "Alice" });
-
-    act(() => lastHandlers.onMemberAdded({ id: "p2", info: { name: "Bob" } }));
-    expect(screen.getByText("Bob")).toBeInTheDocument();
-
-    act(() => lastHandlers.onMemberRemoved({ id: "p1" }));
-    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+  test("ignores delayed progress and preserves progress when a member rejoins", () => {
+    render(<ScoreTable {...props} />);
+    seed();
+    act(() =>
+      handlers.onProgress?.(
+        { ...progress, playerId: "other", elapsedMs: 2000 },
+        "other",
+      ),
+    );
+    act(() =>
+      handlers.onProgress?.(
+        { ...progress, playerId: "other", typed: "he", elapsedMs: 1000 },
+        "other",
+      ),
+    );
+    act(() =>
+      handlers.onMemberAdded?.({ id: "other", info: { name: "Other" } }),
+    );
+    expect(screen.getByRole("row", { name: /Other/ })).toHaveTextContent(
+      "5 chars",
+    );
   });
 });
