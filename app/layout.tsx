@@ -2,8 +2,16 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "TypeArena — Realtime Typing Battles",
-  description: "A realtime typing competition powered by Next.js 15.",
+  title: "TypeArena | Live multiplayer typing races",
+  description:
+    "Join a live typing room, race the same passage for 20 seconds, and see the results together.",
+  applicationName: "TypeArena",
+  openGraph: {
+    title: "TypeArena | Live multiplayer typing races",
+    description: "Race the room in synchronized 20-second typing rounds.",
+    type: "website",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -12,14 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-    >
+    <html lang="en">
       <body>
-        <div className="min-h-screen flex flex-col">
-          <main className="flex-1">{children}</main>
-        </div>
+        <a className="skip-link" href="#main-content">
+          Skip to main content
+        </a>
+        {children}
       </body>
     </html>
   );
