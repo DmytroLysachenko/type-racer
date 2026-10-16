@@ -40,6 +40,19 @@ test("rejects malformed, oversized and cross-round peer events", () => {
   ).toBeNull();
 });
 
+test("peer progress counts joined emoji as one visible character", () => {
+  const family = "👨‍👩‍👧‍👦";
+  const progress = {
+    ...good,
+    typed: family,
+    totalTypedChars: 1,
+  };
+  expect(parseProgress(progress, 1, `${family}x`)).toEqual(progress);
+  expect(rankProgress([progress], `${family}x`)[0]?.metrics.correctChars).toBe(
+    1,
+  );
+});
+
 test("ignores delayed snapshots and freezes completed results", () => {
   const advanced = { ...good, completed: false, elapsedMs: 2000 };
   expect(mergeProgress(undefined, advanced)).toEqual(advanced);

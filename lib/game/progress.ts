@@ -1,5 +1,6 @@
 import { ROUND_SECONDS } from "@/lib/game/config";
 import { computeMetrics } from "./metrics";
+import { characters } from "./characters";
 
 export type ProgressPayload = {
   playerId: string;
@@ -20,11 +21,11 @@ export function parseProgress(
 ): ProgressPayload | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<ProgressPayload>;
-  const targetLength = Array.from(sentence).length;
-  // Check UTF-16 size before allocating a code-point array from untrusted text.
-  if (typeof p.typed === "string" && p.typed.length > targetLength * 2)
+  const targetLength = characters(sentence).length;
+  // Bound UTF-16 size before grapheme segmentation of untrusted text.
+  if (typeof p.typed === "string" && p.typed.length > targetLength * 16)
     return null;
-  const length = typeof p.typed === "string" ? Array.from(p.typed).length : -1;
+  const length = typeof p.typed === "string" ? characters(p.typed).length : -1;
   if (
     typeof p.playerId !== "string" ||
     !/^[a-zA-Z0-9-]{1,64}$/.test(p.playerId) ||

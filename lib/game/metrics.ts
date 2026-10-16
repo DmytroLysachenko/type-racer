@@ -1,3 +1,5 @@
+import { characters, sameCharacter } from "./characters";
+
 export type Metrics = {
   correctChars: number;
   totalChars: number;
@@ -12,7 +14,7 @@ export type Metrics = {
   elapsedMs: number;
 };
 
-/** One character means one Unicode code point, including whitespace and punctuation.
+/** One character means one visible grapheme cluster, including whitespace and punctuation.
  * Raw speed counts all inserted characters, including ones later erased. Net speed
  * counts characters currently correct at their target position. Both use five
  * characters per conventional word. Zero elapsed time always gives zero speed.
@@ -23,12 +25,12 @@ export function computeMetrics(
   elapsedMs: number,
   totals: { totalTypedChars?: number; mistakes?: number } = {},
 ): Metrics {
-  const expected = Array.from(target);
-  const entered = Array.from(typed).slice(0, expected.length);
+  const expected = characters(target);
+  const entered = characters(typed).slice(0, expected.length);
   const totalChars = entered.length;
   let correctChars = 0;
   for (let i = 0; i < totalChars; i++) {
-    if (entered[i] === expected[i]) correctChars++;
+    if (sameCharacter(entered[i]!, expected[i]!)) correctChars++;
   }
   const uncorrectedErrors = totalChars - correctChars;
   const totalTypedChars = Math.max(

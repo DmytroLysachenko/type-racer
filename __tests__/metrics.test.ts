@@ -11,10 +11,16 @@ describe("five-character typing metrics", () => {
     expect(result.accuracy).toBeCloseTo(12 / 13);
     expect(result.uncorrectedErrors).toBe(1);
   });
-  test("counts Unicode code points rather than UTF-16 units", () => {
+  test("counts visible Unicode characters rather than UTF-16 units", () => {
     const result = computeMetrics("A😀 é", "A😀 é", 60_000);
     expect(result.totalChars).toBe(4);
     expect(result.wpm).toBeCloseTo(0.8);
+  });
+  test("joined emoji and canonically equivalent accents count once", () => {
+    const result = computeMetrics("👨‍👩‍👧‍👦 é", "👨‍👩‍👧‍👦 e\u0301", 60_000);
+    expect(result.totalChars).toBe(3);
+    expect(result.correctChars).toBe(3);
+    expect(result.accuracy).toBe(1);
   });
   test("includes erased input in raw speed and reports corrections", () => {
     const result = computeMetrics("abc", "abc", 60_000, {
