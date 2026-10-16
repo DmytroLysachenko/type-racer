@@ -2,7 +2,7 @@
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/pusher/auth/route";
 import { getPusherServer } from "@/lib/pusher.server";
-import { getCurrentRound } from "@/lib/game/rounds";
+import { getCurrentRound, roundChannel } from "@/lib/game/rounds";
 import { readGuestSession } from "@/lib/guest-session";
 
 jest.mock("@/lib/pusher.server", () => ({ getPusherServer: jest.fn() }));
@@ -31,6 +31,9 @@ test("rejects arbitrary channels and invalid names", async () => {
     authorizeChannel: jest.fn(),
   } as unknown as NonNullable<ReturnType<typeof getPusherServer>>);
   expect((await POST(request("private-other"))).status).toBe(400);
+  expect(
+    (await POST(request(`presence-round-v3-${getCurrentRound().id}`))).status,
+  ).toBe(400);
   mockGuest.mockReturnValue(null);
   expect(
     (await POST(request(`presence-round-${getCurrentRound().id}`, " "))).status,
@@ -50,7 +53,7 @@ test("authorizes a valid recent presence round", async () => {
   mockServer.mockReturnValue({ authorizeChannel } as unknown as NonNullable<
     ReturnType<typeof getPusherServer>
   >);
-  const round = `presence-round-${getCurrentRound().id}`;
+  const round = roundChannel(getCurrentRound().id);
   const response = await POST(request(round));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ auth: "signed" });

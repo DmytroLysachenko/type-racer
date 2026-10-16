@@ -1,9 +1,15 @@
-import { getCurrentRound, ROUND_CYCLE_MS } from "@/lib/game/rounds";
+import {
+  getCurrentRound,
+  roundChannel,
+  ROUND_CYCLE_MS,
+} from "@/lib/game/rounds";
 
 test("every visitor moves through lobby, race and results on the same server timeline", () => {
   const base = ROUND_CYCLE_MS * 10;
   const lobby = getCurrentRound(base);
   expect(lobby.phase).toBe("lobby");
+  expect(lobby.passageVersion).toBe("v2");
+  expect(roundChannel(lobby.id)).toBe(`presence-round-v2-${lobby.id}`);
   expect(lobby.phaseEndsAt - base).toBe(5000);
   const racing = getCurrentRound(lobby.startsAt);
   expect(racing.phase).toBe("racing");

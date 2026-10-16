@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const guest = readGuestSession(req);
   const round =
     typeof channelName === "string"
-      ? /^presence-round-(\d+)$/.exec(channelName)
+      ? /^presence-round-(?:v2-)?(\d+)$/.exec(channelName)
       : null;
   const roundId = round ? Number(round[1]) : NaN;
   const currentRound = getCurrentRound().id;

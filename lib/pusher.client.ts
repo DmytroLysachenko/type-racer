@@ -2,6 +2,7 @@
 
 import Pusher, { type Channel } from "pusher-js";
 import type { ProgressPayload } from "@/lib/game/progress";
+import { roundChannel } from "@/lib/game/rounds";
 
 export type { ProgressPayload } from "@/lib/game/progress";
 export type Member = { id: string; info?: { name?: string } };
@@ -43,7 +44,7 @@ function getChannel(roundId: number): Channel | null {
   if (existing) return existing;
   const pusher = getClient();
   if (!pusher) return null;
-  const channel = pusher.subscribe(`presence-round-${roundId}`);
+  const channel = pusher.subscribe(roundChannel(roundId));
   subscriptions.set(roundId, channel);
   channel.bind("pusher:subscription_succeeded", () => {
     ready.add(roundId);
@@ -133,7 +134,7 @@ export function bindRound(roundId: number, handlers: Handlers): () => void {
     });
     channel.unbind("pusher:subscription_succeeded");
     channel.unbind("client-state-request");
-    client?.unsubscribe(`presence-round-${roundId}`);
+    client?.unsubscribe(roundChannel(roundId));
     subscriptions.delete(roundId);
     ready.delete(roundId);
     pending.delete(roundId);

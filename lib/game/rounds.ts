@@ -1,9 +1,5 @@
-import {
-  LOBBY_SECONDS,
-  RESULTS_SECONDS,
-  ROUND_SECONDS,
-  SENTENCES,
-} from "./config";
+import { LOBBY_SECONDS, RESULTS_SECONDS, ROUND_SECONDS } from "./config";
+import { PASSAGE_VERSION, roundPassage } from "@/lib/content/passages";
 
 export type RoundPhase = "lobby" | "racing" | "results";
 export const ROUND_CYCLE_MS =
@@ -17,7 +13,13 @@ export type RoundInfo = {
   resultsEndAt: number;
   phaseEndsAt: number;
   sentence: string;
+  passageVersion: string;
 };
+
+/** Versioned channels isolate old clients during a rolling content deploy. */
+export function roundChannel(roundId: number): string {
+  return `presence-round-${PASSAGE_VERSION}-${roundId}`;
+}
 
 export function getCurrentRound(now: number = Date.now()): RoundInfo {
   const id = Math.floor(now / ROUND_CYCLE_MS);
@@ -28,8 +30,16 @@ export function getCurrentRound(now: number = Date.now()): RoundInfo {
     now < startsAt ? "lobby" : now < endsAt ? "racing" : "results";
   const phaseEndsAt =
     phase === "lobby" ? startsAt : phase === "racing" ? endsAt : resultsEndAt;
-  // The bundled passage list is intentionally nonempty.
-  const sentence = SENTENCES[id % SENTENCES.length]!;
+  const sentence = roundPassage(id);
 
-  return { id, phase, startsAt, endsAt, resultsEndAt, phaseEndsAt, sentence };
+  return {
+    id,
+    phase,
+    startsAt,
+    endsAt,
+    resultsEndAt,
+    phaseEndsAt,
+    sentence,
+    passageVersion: PASSAGE_VERSION,
+  };
 }
