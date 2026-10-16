@@ -1,5 +1,6 @@
 import { ROUND_SECONDS } from "@/lib/game/config";
 import { computeMetrics, type Metrics } from "./metrics";
+import { characters, sameCharacter } from "./characters";
 
 export type RacePhase = "ready" | "running" | "completed";
 export type RaceState = {
@@ -9,6 +10,7 @@ export type RaceState = {
   elapsedMs: number;
   totalTypedChars: number;
   mistakes: number;
+  mistypedTargets: Record<string, number>;
   result: Metrics | null;
 };
 
@@ -22,6 +24,7 @@ export function createRace(): RaceState {
     elapsedMs: 0,
     totalTypedChars: 0,
     mistakes: 0,
+    mistypedTargets: {},
     result: null,
   };
 }
@@ -55,7 +58,7 @@ export function finishRace(
   };
 }
 
-/** Accept only an append of one code point or one backspace at the end. */
+/** Accept one visible character, one backspace, or an in-progress grapheme edit. */
 export function inputRace(
   state: RaceState,
   target: string,
@@ -65,22 +68,45 @@ export function inputRace(
 ): RaceState {
   const current = tickRace(state, target, nowMs, durationMs);
   if (current.phase === "completed") return current;
-  const before = Array.from(current.typed);
-  const after = Array.from(proposed);
+  const before = characters(current.typed);
+  const after = characters(proposed);
+  const expected = characters(target);
   const append =
     after.length === before.length + 1 &&
     before.every((ch, i) => ch === after[i]);
   const backspace =
     after.length === before.length - 1 &&
     after.every((ch, i) => ch === before[i]);
-  if (!append && !backspace) return current;
-  if (append && after.length > Array.from(target).length) return current;
+  const lastBefore = before.at(-1);
+  const lastAfter = after.at(-1);
+  const adjustLast =
+    before.length > 0 &&
+    after.length === before.length &&
+    before.slice(0, -1).every((ch, i) => ch === after[i]) &&
+    lastBefore !== lastAfter &&
+    !!lastBefore &&
+    !!lastAfter &&
+    (lastAfter.startsWith(lastBefore) || lastBefore.startsWith(lastAfter));
+  if (!append && !backspace && !adjustLast) return current;
+  if (append && after.length > expected.length) return current;
   if (current.phase === "ready" && backspace) return current;
   const startedAtMs = current.startedAtMs ?? nowMs;
   const totalTypedChars = current.totalTypedChars + (append ? 1 : 0);
-  const mistakes =
-    current.mistakes +
-    (append && after.at(-1) !== Array.from(target)[after.length - 1] ? 1 : 0);
+  const newMistake =
+    (append && !sameCharacter(lastAfter!, expected[after.length - 1]!)) ||
+    (adjustLast &&
+      sameCharacter(lastBefore!, expected[after.length - 1]!) &&
+      !sameCharacter(lastAfter!, expected[after.length - 1]!));
+  const mistakes = current.mistakes + (newMistake ? 1 : 0);
+  const expectedCharacter = expected[after.length - 1];
+  const mistypedTargets =
+    newMistake && expectedCharacter
+      ? {
+          ...current.mistypedTargets,
+          [expectedCharacter]:
+            (current.mistypedTargets[expectedCharacter] ?? 0) + 1,
+        }
+      : current.mistypedTargets;
   const elapsedMs = Math.max(0, nowMs - startedAtMs);
   const next: RaceState = {
     ...current,
@@ -90,12 +116,69 @@ export function inputRace(
     elapsedMs,
     totalTypedChars,
     mistakes,
+    mistypedTargets,
   };
-  if (proposed === target)
+  if (
+    after.length === expected.length &&
+    after.every((ch, index) => sameCharacter(ch, expected[index]!))
+  )
     return {
       ...next,
       phase: "completed",
       result: computeMetrics(target, proposed, elapsedMs, next),
     };
+  return next;
+}
+
+/** Accept a browser IME commit as an append or final-grapheme replacement. Ordinary
+ * input continues to use inputRace, so a pasted string is still rejected. */
+export function commitComposition(
+  state: RaceState,
+  target: string,
+  proposed: string,
+  nowMs: number,
+  durationMs = RACE_DURATION_MS,
+): RaceState {
+  const adjusted = inputRace(state, target, proposed, nowMs, durationMs);
+  if (adjusted !== state && adjusted.typed === proposed) return adjusted;
+  const before = characters(state.typed);
+  const after = characters(proposed);
+  const appended =
+    after.length > before.length &&
+    before.every((character, index) => character === after[index]);
+  const replacedLast =
+    before.length > 0 &&
+    before.slice(0, -1).every((character, index) => character === after[index]);
+  const prefixLength = appended
+    ? before.length
+    : replacedLast
+      ? before.length - 1
+      : -1;
+  const committed = after.length - prefixLength;
+  if (
+    prefixLength < 0 ||
+    committed < 1 ||
+    committed > 16 ||
+    after.length > characters(target).length
+  )
+    return state;
+  let next = state;
+  if (replacedLast && !appended)
+    next = inputRace(
+      next,
+      target,
+      before.slice(0, -1).join(""),
+      nowMs,
+      durationMs,
+    );
+  for (let index = prefixLength + 1; index <= after.length; index++) {
+    next = inputRace(
+      next,
+      target,
+      after.slice(0, index).join(""),
+      nowMs,
+      durationMs,
+    );
+  }
   return next;
 }

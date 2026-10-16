@@ -1,4 +1,9 @@
-import { createRace, inputRace, tickRace } from "@/lib/game/session";
+import {
+  commitComposition,
+  createRace,
+  inputRace,
+  tickRace,
+} from "@/lib/game/session";
 
 describe("race lifecycle and input", () => {
   test("starts on first character and finishes on exact text", () => {
@@ -27,6 +32,7 @@ describe("race lifecycle and input", () => {
     race = inputRace(race, "ab", "", 400);
     race = inputRace(race, "ab", "a", 500);
     expect(race.mistakes).toBe(2);
+    expect(race.mistypedTargets).toEqual({ a: 2 });
     expect(race.totalTypedChars).toBe(3);
     const finished = tickRace(race, "ab", 20_100);
     expect(finished.phase).toBe("completed");
@@ -50,7 +56,37 @@ describe("race lifecycle and input", () => {
       elapsedMs: 0,
       totalTypedChars: 0,
       mistakes: 0,
+      mistypedTargets: {},
       result: null,
     });
+  });
+  test("accepts a multi-code-point IME commit without enabling bulk paste", () => {
+    const composed = commitComposition(createRace(), "漢字", "漢字", 100);
+    expect(composed.phase).toBe("completed");
+    expect(composed.totalTypedChars).toBe(2);
+    expect(composed.mistakes).toBe(0);
+    expect(inputRace(createRace(), "漢字", "漢字", 100).typed).toBe("");
+  });
+  test("accepts a final-character IME replacement and keeps correction counts", () => {
+    const mistyped = inputRace(createRace(), "漢字", "x", 100);
+    const composed = commitComposition(mistyped, "漢字", "漢字", 200);
+    expect(composed.phase).toBe("completed");
+    expect(composed.totalTypedChars).toBe(3);
+    expect(composed.mistakes).toBe(1);
+    expect(composed.mistypedTargets).toEqual({ 漢: 1 });
+    expect(composed.result?.correctedErrors).toBe(1);
+  });
+  test("treats a joined emoji as one visible character", () => {
+    const emoji = "👨‍👩‍👧‍👦";
+    const completed = inputRace(createRace(), emoji, emoji, 100);
+    expect(completed.phase).toBe("completed");
+    expect(completed.totalTypedChars).toBe(1);
+    expect(completed.result?.correctChars).toBe(1);
+  });
+  test("accepts an accent added to the final grapheme", () => {
+    const first = inputRace(createRace(), "é", "e", 100);
+    const completed = inputRace(first, "é", "e\u0301", 200);
+    expect(completed.phase).toBe("completed");
+    expect(completed.result?.correctChars).toBe(1);
   });
 });
