@@ -14,6 +14,7 @@ import { sendProgress } from "@/lib/pusher.client";
 import type { ProgressPayload } from "@/lib/game/progress";
 import type { RoundPhase } from "@/lib/game/rounds";
 import { PASSAGE_VERSION } from "@/lib/content/passages";
+import { summarizeMistypedTargets } from "@/lib/game/insights";
 
 export function useTypingProgress({
   playerId,
@@ -40,7 +41,7 @@ export function useTypingProgress({
   const savedResult = useRef(false);
 
   const saveResult = useCallback(
-    (result: Metrics) => {
+    (result: Metrics, mistypedTargets: Record<string, number>) => {
       if (savedResult.current) return;
       savedResult.current = true;
       saveRace({
@@ -48,6 +49,7 @@ export function useTypingProgress({
         finishedAt: Date.now(),
         sentence,
         metrics: result,
+        mistypedTargets: summarizeMistypedTargets(mistypedTargets),
         mode: { kind: "shared" },
         contentVersion: PASSAGE_VERSION,
       });
@@ -139,8 +141,8 @@ export function useTypingProgress({
   useEffect(() => {
     if (race.phase !== "completed" || !race.result || savedResult.current)
       return;
-    saveResult(race.result);
-  }, [race.phase, race.result, saveResult]);
+    saveResult(race.result, race.mistypedTargets);
+  }, [race.phase, race.result, race.mistypedTargets, saveResult]);
 
   // The page changes rooms at the boundary. Save an unfinished attempt before
   // the old round unmounts, even when the timer callback has not run yet.
@@ -161,6 +163,7 @@ export function useTypingProgress({
         );
         saveResult(
           ended.result ?? finishRace(last, sentence, last.elapsedMs).result!,
+          ended.mistypedTargets,
         );
       }
     },
