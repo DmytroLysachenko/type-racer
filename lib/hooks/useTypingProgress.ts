@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { computeMetrics, type Metrics } from "@/lib/game/metrics";
 import { saveRace } from "@/lib/game/history";
 import {
+  commitComposition,
   createRace,
   finishRace,
   inputRace,
@@ -12,6 +13,7 @@ import {
 import { sendProgress } from "@/lib/pusher.client";
 import type { ProgressPayload } from "@/lib/game/progress";
 import type { RoundPhase } from "@/lib/game/rounds";
+import { PASSAGE_VERSION } from "@/lib/content/passages";
 
 export function useTypingProgress({
   playerId,
@@ -46,21 +48,24 @@ export function useTypingProgress({
         finishedAt: Date.now(),
         sentence,
         metrics: result,
+        mode: { kind: "shared" },
+        contentVersion: PASSAGE_VERSION,
       });
     },
     [sentence],
   );
 
   const setTyped = useCallback(
-    (proposed: string) => {
+    (proposed: string, composed = false) => {
       if (phase !== "racing" || remainingMs <= 0) return;
       if (durationRef.current === null) {
         // Only a valid first character can start this player's elapsed time.
-        if (Array.from(proposed).length !== 1) return;
+        const initialLength = Array.from(proposed).length;
+        if (initialLength < 1 || (!composed && initialLength !== 1)) return;
         durationRef.current = remainingMs;
       }
       setRace((previous) =>
-        inputRace(
+        (composed ? commitComposition : inputRace)(
           previous,
           sentence,
           proposed,
