@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { readHistory, type RaceRecord } from "@/lib/game/history";
 import type { useTypingProgress } from "@/lib/hooks/useTypingProgress";
-import { TextField } from "@/components/ui";
+import { TypingInput } from "@/components/TypingInput";
 import type { RoundPhase } from "@/lib/game/rounds";
+import { characters, sameCharacter } from "@/lib/game/characters";
 
 export function TypingArea({
   sentence,
@@ -28,11 +29,12 @@ export function TypingArea({
       cancelAnimationFrame(frame);
     };
   }, []);
-  const target = Array.from(sentence);
-  const entered = Array.from(typed);
+  const target = characters(sentence);
+  const entered = characters(typed);
   const progress = Math.round((entered.length / target.length) * 100);
-  const best = history.length
-    ? Math.max(...history.map((item) => item.metrics.wpm))
+  const raceHistory = history.filter((item) => item.mode.kind === "shared");
+  const best = raceHistory.length
+    ? Math.max(...raceHistory.map((item) => item.metrics.wpm))
     : null;
 
   return (
@@ -44,75 +46,76 @@ export function TypingArea({
         <div>
           <p className="eyebrow">
             {phase === "lobby"
-              ? "Up next"
+              ? "UP NEXT"
               : phase === "results"
-                ? "Round over"
-                : "The passage"}
+                ? "AT THE LINE"
+                : "THE PASSAGE"}
           </p>
           <h2 id="race-heading">
             {phase === "lobby"
-              ? "Get ready to race"
+              ? "Read the line. Get ready."
               : phase === "results"
-                ? "Race results"
-                : "One line at a time"}
+                ? "Your run is in"
+                : "Find your rhythm"}
           </h2>
         </div>
         <div
           className="clock"
           role="timer"
+          data-testid="round-clock"
           aria-label={`${secondsLeft} seconds until ${phase === "lobby" ? "race starts" : phase === "racing" ? "race ends" : "next lobby"}`}
         >
-          <span>{secondsLeft}</span>
+          <span data-testid="clock-seconds">
+            {String(secondsLeft).padStart(2, "0")}
+          </span>
           <small>
             {phase === "lobby"
-              ? "to start"
+              ? "TO START"
               : phase === "racing"
-                ? "to finish"
-                : "to lobby"}
+                ? "REMAINING"
+                : "TO LOBBY"}
           </small>
         </div>
       </div>
       {phase !== "results" && (
         <>
-          <div className="passage" aria-hidden="true">
-            {target.map((ch, i) => (
-              <span
-                key={i}
-                className={
-                  i === entered.length && race.phase !== "completed"
-                    ? "caret"
-                    : entered[i] === undefined
-                      ? "pending"
-                      : entered[i] === ch
-                        ? "correct"
-                        : "incorrect"
-                }
-              >
-                {ch}
-              </span>
-            ))}
+          <div className="prompt-frame">
+            <div className="prompt-topline" aria-hidden="true">
+              <span>TYPE THIS PASSAGE</span>
+              <span>{target.length} CHARACTERS</span>
+            </div>
+            <div
+              className="passage"
+              aria-hidden="true"
+              data-testid="race-passage"
+            >
+              {target.map((ch, i) => (
+                <span
+                  key={i}
+                  className={
+                    i === entered.length && race.phase !== "completed"
+                      ? "caret"
+                      : entered[i] === undefined
+                        ? "pending"
+                        : sameCharacter(entered[i]!, ch)
+                          ? "correct"
+                          : "incorrect"
+                  }
+                >
+                  {ch}
+                </span>
+              ))}
+            </div>
           </div>
           <p id="passage-text" className="sr-only">
             Type this text: {sentence}
           </p>
-          <TextField
+          <TypingInput
             id="typing"
-            label="Type the passage"
-            inputClassName="typing-input"
-            description="Backspace corrects your last character. The race accepts one typed character at a time."
+            label="YOUR INPUT"
+            description="Backspace to correct. Bulk paste is ignored."
             value={typed}
-            onChange={(event) => setTyped(event.target.value)}
-            onClick={(event) =>
-              event.currentTarget.setSelectionRange(
-                event.currentTarget.value.length,
-                event.currentTarget.value.length,
-              )
-            }
-            name="race-input"
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
+            onInput={setTyped}
             disabled={
               phase !== "racing" ||
               race.phase === "completed" ||
@@ -125,8 +128,12 @@ export function TypingArea({
                   ? "Race complete"
                   : "Start typing here…"
             }
-            aria-describedby="passage-text"
+            describedBy="passage-text"
           />
+          <div className="progress-heading" aria-hidden="true">
+            <span>PASSAGE PROGRESS</span>
+            <span>{progress}%</span>
+          </div>
           <div
             className="progress-track"
             role="progressbar"
@@ -135,7 +142,10 @@ export function TypingArea({
             aria-valuemax={100}
             aria-label="Passage progress"
           >
-            <span style={{ transform: `scaleX(${progress / 100})` }} />
+            <span
+              data-testid="progress-fill"
+              style={{ transform: `scaleX(${progress / 100})` }}
+            />
           </div>
           <div className="stat-grid" aria-label="Live statistics">
             <div>
@@ -154,7 +164,7 @@ export function TypingArea({
               </strong>
               <span>Accuracy</span>
             </div>
-            <div>
+            <div data-testid="stat-mistakes">
               <strong>{metrics.mistakes}</strong>
               <span>Mistakes</span>
             </div>
@@ -162,7 +172,7 @@ export function TypingArea({
         </>
       )}
       {phase === "results" || race.phase === "completed" ? (
-        <div className="result" role="status">
+        <div className="result" role="status" data-testid="race-result">
           <div>
             <p className="eyebrow">
               {race.phase === "ready"
@@ -170,14 +180,22 @@ export function TypingArea({
                 : "Finished this round"}
             </p>
             <h3>
-              {race.phase === "ready"
-                ? "Join the next race"
-                : `${Math.round(metrics.wpm)} net WPM`}
+              {race.phase === "ready" ? (
+                "Join the next race"
+              ) : (
+                <>
+                  <strong>{Math.round(metrics.wpm)}</strong>
+                  <span>NET WPM</span>
+                </>
+              )}
             </h3>
-            <p>
-              {metrics.correctedErrors} corrected · {metrics.uncorrectedErrors}{" "}
-              remaining · {Math.round(metrics.cpm)} CPM
-            </p>
+            {race.phase !== "ready" && (
+              <p>
+                {metrics.correctedErrors} corrected ·{" "}
+                {metrics.uncorrectedErrors} remaining ·{" "}
+                {Math.round(metrics.cpm)} CPM
+              </p>
+            )}
           </div>
           <p>The next lobby opens when the clock resets.</p>
         </div>
@@ -190,16 +208,16 @@ export function TypingArea({
               : "Keep your rhythm"}
         </p>
       )}
-      <p className="personal-best">
+      <p className="personal-best" data-testid="personal-best">
         {best === null
           ? "Complete a race to set your personal best."
           : `Personal best on this device: ${Math.round(best)} WPM`}
       </p>
-      {history.length > 0 && (
+      {raceHistory.length > 0 && (
         <details className="history-list">
           <summary>Recent sessions</summary>
           <ol>
-            {history.slice(0, 5).map((item) => (
+            {raceHistory.slice(0, 5).map((item) => (
               <li key={item.id}>
                 <span>{new Date(item.finishedAt).toLocaleDateString()}</span>
                 <strong>{Math.round(item.metrics.wpm)} WPM</strong>
