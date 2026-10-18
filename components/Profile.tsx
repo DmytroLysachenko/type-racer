@@ -38,8 +38,9 @@ function ProfileForm({
   const [saving, setSaving] = useState(false);
   return (
     <section className="profile-panel" aria-labelledby="profile-heading">
-      <p className="eyebrow">Your space</p>
-      <h2 id="profile-heading">Guest profile</h2>
+      <p className="eyebrow">YOUR LANE</p>
+      <h2 id="profile-heading">Race as yourself</h2>
+      <p className="profile-intro">Choose the name other racers see.</p>
       <form
         className="profile-form"
         onSubmit={async (event) => {
@@ -73,12 +74,16 @@ function ProfileForm({
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
-        <p className="profile-message" role="status">
+        <p
+          className="profile-message"
+          role="status"
+          data-testid="profile-feedback"
+        >
           {message}
         </p>
       </form>
       <p className="muted">
-        No account is required. Your name and race history stay in this browser.
+        No account needed. Recent runs stay on this device.
       </p>
     </section>
   );
