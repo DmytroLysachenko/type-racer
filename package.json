@@ -18,7 +18,8 @@
     "test:watch": "jest --watch",
     "test:ci": "jest --runInBand",
     "test:coverage": "jest --runInBand --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "measure:performance": "node scripts/measure-performance.mjs"
   },
   "dependencies": {
     "next": "16.4.0",
