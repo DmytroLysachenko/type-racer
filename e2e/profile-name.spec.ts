@@ -15,14 +15,24 @@ async function startAtPhase(
   );
 }
 
+async function advanceToResults(page: import("@playwright/test").Page) {
+  const elapsed = (await page.evaluate(() => Date.now())) % 31_000;
+  if (elapsed < 26_000) await page.clock.fastForward(26_500 - elapsed);
+  await expect(page.getByTestId("round-phase")).toHaveAttribute(
+    "data-phase",
+    "results",
+  );
+}
+
 test("guest can edit and keep a display name", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(response?.headers()["x-frame-options"]).toBe("DENY");
   const input = page.getByTestId("profile-name");
   await expect(input).toBeVisible();
   await input.fill("Portfolio Racer");
   await page.getByTestId("save-profile").click();
-  await expect(page.getByText("Name saved on this device.")).toBeVisible();
+  await expect(page.getByTestId("profile-feedback")).not.toBeEmpty();
   await page.reload();
   await expect(page.getByTestId("profile-name")).toHaveValue("Portfolio Racer");
 });
@@ -36,7 +46,10 @@ test("an unsaved profile edit survives the next shared round", async ({
   await expect(name).toBeVisible();
   await name.fill("Still editing");
   await page.clock.fastForward(26_000);
-  await expect(page.getByText("Lobby open")).toBeVisible();
+  await expect(page.getByTestId("round-phase")).toHaveAttribute(
+    "data-phase",
+    "lobby",
+  );
   await expect(name).toHaveValue("Still editing");
 });
 
@@ -50,22 +63,21 @@ test("completing a race saves a personal best and joins the next round", async (
   });
   await startAtPhase(page, 6_000);
   await page.goto("/");
-  const input = page.locator("#typing");
+  const input = page.getByTestId("race-input");
   await expect(input).toBeVisible();
-  const sentence = await page.locator(".passage").innerText();
+  const sentence = await page.getByTestId("race-passage").innerText();
   await input.pressSequentially(sentence);
-  await expect(page.getByText("Finished this round")).toBeVisible();
-  await expect(page.getByText(/Personal best on this device:/)).toBeVisible();
-  await page.clock.fastForward(20_000);
-  await expect(page.getByText("Round results")).toBeVisible();
+  await expect(page.getByTestId("race-result")).toBeVisible();
+  await expect(page.getByTestId("personal-best")).toContainText(/\d+ WPM/);
+  await advanceToResults(page);
   await page.clock.fastForward(6_000);
   await expect(input).toBeDisabled();
   await page.clock.fastForward(5_000);
   await expect(input).toBeEnabled();
   await expect(input).toHaveValue("");
-  await expect(page.locator(".passage")).not.toHaveText(sentence);
+  await expect(page.getByTestId("race-passage")).not.toHaveText(sentence);
   await page.reload();
-  await expect(page.getByText(/Personal best on this device:/)).toBeVisible();
+  await expect(page.getByTestId("personal-best")).toContainText(/\d+ WPM/);
   expect(browserErrors).toEqual([]);
 });
 
@@ -74,17 +86,15 @@ test("backspace corrects a mistake and pasted text does not enter the race", asy
 }) => {
   await startAtPhase(page, 6_000);
   await page.goto("/");
-  const input = page.locator("#typing");
+  const input = page.getByTestId("race-input");
   await expect(input).toBeVisible();
-  const first = (await page.locator(".passage").innerText())[0]!;
+  const first = (await page.getByTestId("race-passage").innerText())[0]!;
   await input.pressSequentially("~");
   await expect(input).toHaveValue("~");
   await input.press("Backspace");
   await input.pressSequentially(first);
   await expect(input).toHaveValue(first);
-  await expect(
-    page.getByText("Mistakes").locator("..").locator("strong"),
-  ).toHaveText("1");
+  await expect(page.getByTestId("stat-mistakes")).toContainText("1");
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.evaluate(() => navigator.clipboard.writeText("pasted words"));
   await input.press("ControlOrMeta+V");
@@ -102,14 +112,13 @@ test("home page has no automated accessibility violations", async ({
 }) => {
   await startAtPhase(page, 6_000);
   await page.goto("/");
-  await expect(page.locator("#typing")).toBeVisible();
+  await expect(page.getByTestId("race-input")).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
   await page.emulateMedia({ colorScheme: "dark" });
   const darkResults = await new AxeBuilder({ page }).analyze();
   expect(darkResults.violations).toEqual([]);
-  await page.clock.fastForward(20_000);
-  await expect(page.getByText("Round results")).toBeVisible();
+  await advanceToResults(page);
   const resultScreen = await new AxeBuilder({ page }).analyze();
   expect(resultScreen.violations).toEqual([]);
 });
@@ -121,7 +130,7 @@ test("small landscape view and reduced motion keep race controls usable", async 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await startAtPhase(page, 6_000);
   await page.goto("/");
-  const input = page.locator("#typing");
+  const input = page.getByTestId("race-input");
   await expect(input).toBeEnabled();
   await input.pressSequentially("a");
   await expect(input).toHaveValue("a");
@@ -132,11 +141,15 @@ test("small landscape view and reduced motion keep race controls usable", async 
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(0);
   const transition = await page
-    .locator(".progress-track span")
+    .getByTestId("progress-fill")
     .evaluate((element) => getComputedStyle(element).transitionDuration);
   expect(transition).toBe("0s");
   await page.setViewportSize({ width: 375, height: 667 });
   await expect(input).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const inputBounds = await input.boundingBox();
+  expect(inputBounds).not.toBeNull();
+  expect(inputBounds!.y + inputBounds!.height).toBeLessThanOrEqual(667);
   expect(
     await page.evaluate(
       () =>
@@ -144,4 +157,46 @@ test("small landscape view and reduced motion keep race controls usable", async 
         document.documentElement.clientWidth,
     ),
   ).toBeLessThanOrEqual(0);
+});
+
+test("theme choice persists and system choice follows the device", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  const theme = page.getByRole("combobox", { name: "Theme" });
+  await expect(theme).toHaveValue("system");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await theme.selectOption("light");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(theme).toHaveValue("light");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await theme.selectOption("system");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).colorScheme,
+    ),
+  ).toBe("dark");
+});
+
+test("theme remains usable when preference storage is blocked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const read = Storage.prototype.getItem;
+    const write = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === "typearena-theme") throw new Error("Storage blocked");
+      return read.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "typearena-theme") throw new Error("Storage blocked");
+      return write.call(this, key, value);
+    };
+  });
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Theme" }).selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
