@@ -24,6 +24,21 @@ const ready = new Set<number>();
 const pending = new Map<number, ProgressPayload>();
 const latest = new Map<number, ProgressPayload>();
 const lastSnapshotSent = new Map<number, number>();
+const snapshotRetries = new Map<number, number[]>();
+
+function clearSnapshotRetries(roundId: number) {
+  snapshotRetries.get(roundId)?.forEach((timer) => window.clearTimeout(timer));
+  snapshotRetries.delete(roundId);
+}
+
+function requestPeerSnapshots(roundId: number, channel: Channel) {
+  if (!ready.has(roundId)) return;
+  try {
+    channel.trigger("client-state-request", { roundId });
+  } catch {
+    // A later retry can recover when the socket is reconnecting.
+  }
+}
 
 function getClient(): Pusher | null {
   if (!liveConfigured) return null;
@@ -47,13 +62,22 @@ function getChannel(roundId: number): Channel | null {
   const channel = pusher.subscribe(roundChannel(roundId));
   subscriptions.set(roundId, channel);
   channel.bind("pusher:subscription_succeeded", () => {
+    clearSnapshotRetries(roundId);
     ready.add(roundId);
     const buffered = pending.get(roundId);
     if (buffered) {
       pending.delete(roundId);
       sendProgress(roundId, buffered);
     } else if (latest.has(roundId)) sendProgress(roundId, latest.get(roundId)!);
-    channel.trigger("client-state-request", { roundId });
+    requestPeerSnapshots(roundId, channel);
+    // A peer can be resubscribing when the first request arrives. Retry twice
+    // within this room's lifetime, without adding a permanent polling loop.
+    snapshotRetries.set(
+      roundId,
+      [1200, 3200].map((delay) =>
+        window.setTimeout(() => requestPeerSnapshots(roundId, channel), delay),
+      ),
+    );
   });
   channel.bind("client-state-request", () => {
     const snapshot = latest.get(roundId);
@@ -100,10 +124,22 @@ export function bindRound(roundId: number, handlers: Handlers): () => void {
         handlers.onProgress?.(data as ProgressPayload, metadata.user_id);
     });
   if (handlers.onStatus) {
-    handlers.onStatus(client?.connection.state ?? "connecting");
+    const connectionState = client?.connection.state ?? "connecting";
+    handlers.onStatus(
+      connectionState === "connected" && !ready.has(roundId)
+        ? "connecting"
+        : connectionState,
+    );
     const status = (state: { current: string }) => {
-      if (state.current !== "connected") ready.delete(roundId);
-      handlers.onStatus?.(state.current);
+      if (state.current !== "connected") {
+        ready.delete(roundId);
+        clearSnapshotRetries(roundId);
+      }
+      handlers.onStatus?.(
+        state.current === "connected" && !ready.has(roundId)
+          ? "connecting"
+          : state.current,
+      );
     };
     client?.connection.bind("state_change", status);
     bindings.push([
@@ -114,6 +150,7 @@ export function bindRound(roundId: number, handlers: Handlers): () => void {
   }
   const onOffline = () => {
     ready.delete(roundId);
+    clearSnapshotRetries(roundId);
     handlers.onStatus?.("offline");
     client?.disconnect();
   };
@@ -137,6 +174,7 @@ export function bindRound(roundId: number, handlers: Handlers): () => void {
     client?.unsubscribe(roundChannel(roundId));
     subscriptions.delete(roundId);
     ready.delete(roundId);
+    clearSnapshotRetries(roundId);
     pending.delete(roundId);
     latest.delete(roundId);
     lastSnapshotSent.delete(roundId);

@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { ScoreTable } from "@/components/ScoreTable";
 import type { Member, Members, ProgressPayload } from "@/lib/pusher.client";
 
@@ -43,15 +43,23 @@ const seed = () =>
 describe("multiplayer standings", () => {
   test("shows connection and waiting states", () => {
     render(<ScoreTable {...props} />);
-    expect(screen.getByText("Waiting for racers to join.")).toBeInTheDocument();
+    expect(screen.getByTestId("room-empty")).toBeInTheDocument();
     act(() => handlers.onStatus?.("connected"));
-    expect(screen.getByRole("status")).toHaveTextContent("Connected");
+    expect(screen.getByTestId("room-connection")).toHaveAttribute(
+      "data-status",
+      "connected",
+    );
   });
   test("seeds presence and marks the current player", () => {
     render(<ScoreTable {...props} />);
     seed();
-    expect(screen.getByText("Me (you)")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Me \(you\)/ })).toBeInTheDocument();
     expect(screen.getByText("Other")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("row", { name: /Me \(you\)/ })).getAllByRole(
+        "cell",
+      )[4],
+    ).toHaveTextContent("—");
   });
   test("calculates scores from bounded progress and ignores invalid events", () => {
     render(<ScoreTable {...props} />);
@@ -94,11 +102,16 @@ describe("multiplayer standings", () => {
     rerender(
       <ScoreTable {...props} phase="results" localProgress={progress} />,
     );
-    expect(screen.getByText("Round results")).toBeInTheDocument();
+    expect(screen.getByTestId("room-standings")).toHaveAttribute(
+      "data-phase",
+      "results",
+    );
     expect(screen.getByText("#1")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
     act(() => handlers.onMemberRemoved?.({ id: "other" }));
-    expect(screen.getByText("Other (left)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("row", { name: /Other \(left\)/ }),
+    ).toBeInTheDocument();
   });
   test("ignores delayed progress and preserves progress when a member rejoins", () => {
     render(<ScoreTable {...props} />);

@@ -23,20 +23,31 @@ export function ScoreTable({
     status,
     activeIds,
   } = useRoomStandings(roundId, sentence, selfId, localProgress);
+  const passageLength = Array.from(sentence).length;
   return (
-    <section className="room-panel" aria-labelledby="room-heading">
+    <section
+      className="room-panel"
+      aria-labelledby="room-heading"
+      data-testid="room-standings"
+      data-phase={phase}
+    >
       <div className="room-heading-row">
         <div>
           <p className="eyebrow">
-            {phase === "results" ? "Round complete" : "Room"}
+            {phase === "results" ? "FINAL ORDER" : "ON THE TRACK"}
           </p>
           <h2 id="room-heading">
             {phase === "results" ? "Round results" : "Live room"}
+            <span className="room-count">
+              {sorted.length} {sorted.length === 1 ? "RACER" : "RACERS"}
+            </span>
           </h2>
         </div>
         <span
           className={`connection-status connection-${status}`}
           role="status"
+          data-testid="room-connection"
+          data-status={status}
         >
           {status === "connected"
             ? "Connected"
@@ -50,9 +61,9 @@ export function ScoreTable({
       <p className="muted room-description">
         {liveConfigured
           ? status === "unavailable" || status === "failed"
-            ? "The live room could not connect. Try refreshing shortly; you can still type locally."
-            : "Live standings are shared with the room. Guest scores are unverified."
-          : "Live room is offline. Typing is available locally."}
+            ? "Room connection failed. You can still race locally."
+            : "Shared progress updates as the room types. Times are self-reported."
+          : "Live room is offline. Your race still works locally."}
       </p>
       <div
         className="table-wrap"
@@ -77,34 +88,54 @@ export function ScoreTable({
           </thead>
           <tbody>
             {sorted.map((row, index) => (
-              <tr key={row.playerId}>
+              <tr
+                key={row.playerId}
+                className={row.playerId === selfId ? "is-self" : undefined}
+              >
                 <td>
-                  {phase === "results" && row.typed ? `#${index + 1}` : "—"}
+                  <span className="rank-value">
+                    {phase === "results" && row.typed ? `#${index + 1}` : "—"}
+                  </span>
                 </td>
                 <td>
-                  {row.name}
-                  {row.playerId === selfId ? " (you)" : ""}
+                  <span className="player-name">{row.name}</span>
+                  {row.playerId === selfId ? (
+                    <span className="player-meta"> (you)</span>
+                  ) : null}
                   {liveConfigured &&
                   status === "connected" &&
                   row.playerId !== selfId &&
-                  !activeIds.has(row.playerId)
-                    ? " (left)"
-                    : ""}
+                  !activeIds.has(row.playerId) ? (
+                    <span className="player-meta"> (left)</span>
+                  ) : null}
                 </td>
                 <td>
-                  {Array.from(row.typed).length} chars
+                  <span className="progress-value">
+                    {row.metrics.totalChars} chars
+                  </span>
                   {row.completed ? " · finished" : ""}
+                  <span className="lane-progress" aria-hidden="true">
+                    <span
+                      style={{
+                        transform: `scaleX(${row.metrics.totalChars / passageLength})`,
+                      }}
+                    />
+                  </span>
                 </td>
                 <td>{Math.round(row.metrics.wpm)}</td>
-                <td>{Math.round(row.metrics.accuracy * 100)}%</td>
+                <td>
+                  {row.metrics.totalChars > 0
+                    ? `${Math.round(row.metrics.accuracy * 100)}%`
+                    : "—"}
+                </td>
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
+                <td colSpan={5} className="muted" data-testid="room-empty">
                   {phase === "results"
                     ? "No racers joined this round."
-                    : "Waiting for racers to join."}
+                    : "The next racer will appear here."}
                 </td>
               </tr>
             )}
