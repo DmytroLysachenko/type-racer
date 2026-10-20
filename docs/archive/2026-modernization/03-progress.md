@@ -1,5 +1,13 @@
 # Progress and recovery
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
+## UI refinement — 2026-10-13
+
+The user requested a stronger visual and interaction design. This pass is local and uncommitted. The current view uses a compact race timing desk layout, a phase rail, clearer live standings lanes, new typography and semantic theme tokens. The passage and input now appear together in the first mobile viewport at 375px; light, dark, lobby, race and results screenshots were inspected locally. The standings display shows an em dash for accuracy before any characters are typed. UI tests now locate stable race controls and states via roles or `data-testid`/state attributes, so copy and CSS changes do not require test rewrites. A browser assertion guards the first-viewport input placement.
+
+The 33 Jest tests, lint, typecheck, final production build and formatting check passed. The desktop/mobile browser suite passed 12 flows, with two credential-gated live cases skipped. The separate credential-enabled two-browser Pusher flow passed after its locators were updated. The six mobile UI flows, including the new viewport assertion, passed. `git diff --check` passed. The previous release gates below continue to apply. A transient Next dev-server CSS resolution error occurred while its stylesheet was being rewritten and cleared after recompilation; the production build passed.
+
 Last updated: 2026-10-11. The social multiplayer pass and additional local hardening are implemented and locally verified. Competitive score verification, shared storage and deployed-environment validation remain open production gates. A later user request authorized packaging the work into 20 commits and pushing `main`; the commit dates were explicitly assigned across 2026-10-11 through 2026-10-15. No production infrastructure was edited through this repository.
 
 Current pass: reusable module seams, design tokens, UI primitives and CI coverage completed locally; history is organized into 20 focused commits. Competitive results and deployed-environment checks remain open gates.

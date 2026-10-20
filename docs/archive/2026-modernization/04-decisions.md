@@ -1,5 +1,7 @@
 # Decision log
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
 ## 2026-10-11: Preserve the existing stack
 
 Next.js, React, Tailwind and Pusher already support the small application. A rewrite, full auth provider, database, or atomic-design hierarchy would increase cost without solving the immediate correctness failures. Use pure game helpers and small adapters instead.

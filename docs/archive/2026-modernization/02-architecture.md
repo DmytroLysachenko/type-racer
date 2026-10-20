@@ -1,5 +1,9 @@
 # Implemented architecture
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
+This records the earlier multiplayer modernization. The current architecture, including personal practice and versioned passages, is in [docs/architecture.md](../../architecture.md).
+
 TypeArena remains a small Next.js App Router application with React, Tailwind and Pusher Channels. The main product flow is multiplayer. Game rules, round scheduling and untrusted peer-event parsing are pure modules under `lib/game`; hooks connect them to the browser. There is no database, account provider or verified leaderboard.
 
 ```text
@@ -19,7 +23,7 @@ components/ui + styles/tokens.css + styles/primitives.css -> reusable React UI f
 
 `getCurrentRound(serverNow)` is the single interface for a 31-second cycle: five-second lobby, 20-second race and six-second results. The room ID and passage stay stable through all three phases. `/api/time` returns an uncached server timestamp. `useRound` estimates network travel time and projects that sample with `performance.now()`, resampling on tab visibility and every minute. The page waits for the first sample, with a four-second device-clock fallback if the request fails. The same phase controls input eligibility, countdown, Pusher presence and results. A browser that joins during a race gets the remaining time; the next lobby gives everyone a shared start.
 
-`inputRace` accepts one Unicode code point at the end or one final-character deletion. Bulk paste/drop changes are rejected by that rule while the browser's paste action remains available. `performance.now()` measures the typing attempt, bounded by the remaining round. On completion or the transition to results, statistics freeze and a device-local history record is saved. History is capped at 50 results.
+The current `inputRace` rules count Unicode grapheme clusters and accept bounded composition commits, including a final-character replacement. Bulk paste/drop changes are rejected; see [current architecture](../../architecture.md) for the exact typing contract. `performance.now()` measures the typing attempt, bounded by the remaining round. On completion or the transition to results, statistics freeze and a device-local history record is saved. History is capped at 50 results.
 
 ## Multiplayer data flow and trust
 
@@ -39,4 +43,4 @@ Pusher credentials are required for multiplayer. Without them, typing and local 
 
 `lib/game` is the pure domain module for config, rounds, input state, metrics, progress validation and local history. `lib/hooks` owns browser lifecycle and external event wiring. `RaceRound` owns one typing session and passes its progress directly to both the input view and standings view; there is no hidden global progress event. Only that race subtree resets on the next round, so an unsaved profile edit survives rollover. `useRoomStandings` is the seam between Pusher and the table: it returns ranked rows, active member IDs and connection status, leaving `ScoreTable` to render. The hook remains app-specific; it is not part of the shared UI library.
 
-`components/ui` and `styles/tokens.css`/`styles/primitives.css` form the portable foundation. Their interfaces depend on React and native HTML only, and the style tokens can be rethemed in another project. [Design system guidance](../design-system.md) describes the copy boundary. A monorepo package or generic repository layer would add maintenance before there is a second consumer, so neither was introduced.
+`components/ui` and `styles/tokens.css`/`styles/primitives.css` form the portable foundation. Their interfaces depend on React and native HTML only, and the style tokens can be rethemed in another project. [Design system guidance](../../design-system.md) describes the copy boundary. A monorepo package or generic repository layer would add maintenance before there is a second consumer, so neither was introduced.

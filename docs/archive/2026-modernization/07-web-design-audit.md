@@ -1,5 +1,7 @@
 # Web interface review
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
 Reviewed the race, room, profile and global styles on 2026-10-11 against the [current Vercel Web Interface Guidelines](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md) and the UI/UX Pro Max interaction priorities. This is a source and automated-browser review, not a manual screen-reader or device certification.
 
 ## Resolved findings

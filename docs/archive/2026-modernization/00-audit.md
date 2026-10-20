@@ -1,5 +1,7 @@
 # Repository audit (2026-10-11)
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
 ## Current application
 
 - Next.js 15.4.6 App Router, React 19.1, TypeScript 5, Tailwind 4, Pusher Channels. Node 24.18 and pnpm 11.11 are installed; the repository has both `pnpm-lock.yaml` and an untracked `package-lock.json`. README says pnpm, so pnpm is the intended package manager.

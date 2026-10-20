@@ -1,5 +1,7 @@
 # Testing strategy and results
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
 ## Baseline and scope
 
 Jest originally failed before running tests because `jest.config.ts` could not resolve `next/jest`. There were five metric and five scoreboard tests, plus two Playwright tests; one browser test used an obsolete storage key and fixed round ID. A valid baseline coverage percentage was unavailable.
@@ -7,6 +9,8 @@ Jest originally failed before running tests because `jest.config.ts` could not r
 Jest explicitly collects coverage for `lib/game`, `lib/hooks`, `components`, and API routes. The earlier modernization baseline was 45.8% statements overall and 91.54% for pure game code. The multiplayer pass added round, progress, guest-cookie and browser coverage; its final measured coverage belongs in `03-progress.md`. UI/hook coverage in Jest excludes Playwright flows, so the total is not a product-quality score.
 
 ## Automated checks
+
+UI tests locate controls by accessible role when that expresses the interaction, and use stable `data-testid` hooks for race phase, passage, input, connection state, results, and statistics. These hooks expose state through `data-phase` or `data-status` without tying tests to headings, helper copy, CSS classes, or element nesting. Assertions still check meaningful player names, typed characters, rankings and calculated scores: those values are the behavior under test. Keep test IDs local to stable interaction boundaries rather than adding one to every decorative element.
 
 - Pure tests cover five-character speed, CPM, Unicode, punctuation, whitespace, zero time, mistakes/corrections, deadline behavior, invalid edits, and restart.
 - History tests cover malformed storage and the 50-record cap.

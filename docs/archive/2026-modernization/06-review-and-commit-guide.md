@@ -1,5 +1,7 @@
 # Commit history and review guide
 
+> Historical record. For current guidance, see the [product roadmap](../../roadmap.md).
+
 At the user's later request, the modernization was divided into 20 focused commits on `main`. Author and committer timestamps were explicitly set to four commits per day on 2026-10-11 through 2026-10-15 (Europe/Warsaw, UTC+02:00). Some dates follow the actual preparation time; they are requested presentation dates, not evidence that the work occurred on those future days.
 
 | #   | Subject                                          | Primary files                                                                        |
