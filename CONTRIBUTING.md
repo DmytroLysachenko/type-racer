@@ -11,9 +11,10 @@ GitHub Actions repeats credential-free checks on pushes and pull requests. It ha
 ## Where changes belong
 
 - Put pure typing rules, round timing and score calculations in `lib/game`. Keep them independent of React, Pusher and browser storage where possible.
+- Put original exercise text in `lib/content`. Published shared passage sets are immutable; follow [the content guide](lib/content/README.md) and the [architecture](docs/architecture.md) before editing them.
 - Put browser lifecycle and external event wiring in `lib/hooks` or the relevant adapter. `useRoomStandings` owns Pusher subscription state; `ScoreTable` renders it.
 - Keep Next.js routes in `app/api`, with shared request/session helpers under `lib/http` and `lib/guest-session.ts`.
 - Use `components/ui` and `styles/tokens.css` for controls and styles that are useful across screens or projects. Keep race-specific layouts in application views and `app/globals.css`. See [design-system.md](docs/design-system.md) before extracting a new primitive.
-- Add behavioral tests at the module interface. Unit tests cover pure rules; browser tests cover the full race, accessibility and responsive interaction. The live Pusher suite covers cross-browser delivery and reconnection.
+- Add behavioral tests at the module interface. Unit tests cover pure rules and result migration; browser tests cover the race, personal practice, accessibility and responsive interaction. The live Pusher suite covers cross-browser delivery and reconnection.
 
 Use native HTML semantics and current tokens before adding a dependency or abstraction. A new reusable module should hide a repeated behavior or accessibility requirement; avoid wrappers that only rename a single HTML element.
