@@ -6,17 +6,20 @@ import type { useTypingProgress } from "@/lib/hooks/useTypingProgress";
 import { TypingInput } from "@/components/TypingInput";
 import type { RoundPhase } from "@/lib/game/rounds";
 import { characters, sameCharacter } from "@/lib/game/characters";
+import type { ProgressPayload } from "@/lib/game/progress";
 
 export function TypingArea({
   sentence,
   phase,
   secondsLeft,
   typing,
+  peers,
 }: {
   sentence: string;
   phase: RoundPhase;
   secondsLeft: number;
   typing: ReturnType<typeof useTypingProgress>;
+  peers: ProgressPayload[];
 }) {
   const { race, typed, setTyped, metrics } = typing;
   const [history, setHistory] = useState<RaceRecord[]>([]);
@@ -31,6 +34,18 @@ export function TypingArea({
   }, []);
   const target = characters(sentence);
   const entered = characters(typed);
+  const peerMarkers = new Map<number, string[]>();
+  if (phase === "racing" && target.length > 0) {
+    for (const peer of peers) {
+      const position = Math.min(
+        characters(peer.typed).length,
+        target.length - 1,
+      );
+      const names = peerMarkers.get(position) ?? [];
+      names.push(peer.name);
+      peerMarkers.set(position, names);
+    }
+  }
   const progress = Math.round((entered.length / target.length) * 100);
   const raceHistory = history.filter((item) => item.mode.kind === "shared");
   const best = raceHistory.length
@@ -89,22 +104,34 @@ export function TypingArea({
               aria-hidden="true"
               data-testid="race-passage"
             >
-              {target.map((ch, i) => (
-                <span
-                  key={i}
-                  className={
-                    i === entered.length && race.phase !== "completed"
-                      ? "caret"
-                      : entered[i] === undefined
-                        ? "pending"
-                        : sameCharacter(entered[i]!, ch)
-                          ? "correct"
-                          : "incorrect"
-                  }
-                >
-                  {ch}
-                </span>
-              ))}
+              {target.map((ch, i) => {
+                const marker = peerMarkers.get(i);
+                const state =
+                  i === entered.length && race.phase !== "completed"
+                    ? "caret"
+                    : entered[i] === undefined
+                      ? "pending"
+                      : sameCharacter(entered[i]!, ch)
+                        ? "correct"
+                        : "incorrect";
+                return (
+                  <span
+                    key={i}
+                    className={`${state}${marker ? " has-peer-marker" : ""}`}
+                    data-peer-position={marker ? i : undefined}
+                    data-peer-marker={
+                      marker
+                        ? marker.length === 1
+                          ? marker[0]
+                          : `${marker[0]} +${marker.length - 1}`
+                        : undefined
+                    }
+                    title={marker?.join(", ")}
+                  >
+                    {ch}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <p id="passage-text" className="sr-only">

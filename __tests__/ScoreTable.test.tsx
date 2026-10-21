@@ -1,5 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import { ScoreTable } from "@/components/ScoreTable";
+import { useRoomStandings } from "@/lib/hooks/useRoomStandings";
 import type { Member, Members, ProgressPayload } from "@/lib/pusher.client";
 
 let handlers: {
@@ -18,7 +19,6 @@ jest.mock("@/lib/pusher.client", () => ({
 }));
 
 const sentence = "hello world";
-const props = { selfId: "me", roundId: 1, sentence, phase: "racing" as const };
 const progress: ProgressPayload = {
   playerId: "me",
   name: "Me",
@@ -40,9 +40,27 @@ const seed = () =>
     }),
   );
 
+function StandingsHarness({
+  phase = "racing",
+  localProgress,
+}: {
+  phase?: "racing" | "results";
+  localProgress?: ProgressPayload;
+}) {
+  const standings = useRoomStandings(1, sentence, "me", "Me", localProgress);
+  return (
+    <ScoreTable
+      selfId="me"
+      sentence={sentence}
+      phase={phase}
+      standings={standings}
+    />
+  );
+}
+
 describe("multiplayer standings", () => {
   test("shows connection and waiting states", () => {
-    render(<ScoreTable {...props} />);
+    render(<StandingsHarness />);
     expect(screen.getByTestId("room-empty")).toBeInTheDocument();
     act(() => handlers.onStatus?.("connected"));
     expect(screen.getByTestId("room-connection")).toHaveAttribute(
@@ -51,7 +69,7 @@ describe("multiplayer standings", () => {
     );
   });
   test("seeds presence and marks the current player", () => {
-    render(<ScoreTable {...props} />);
+    render(<StandingsHarness />);
     seed();
     expect(screen.getByRole("row", { name: /Me \(you\)/ })).toBeInTheDocument();
     expect(screen.getByText("Other")).toBeInTheDocument();
@@ -62,7 +80,7 @@ describe("multiplayer standings", () => {
     ).toHaveTextContent("—");
   });
   test("calculates scores from bounded progress and ignores invalid events", () => {
-    render(<ScoreTable {...props} />);
+    render(<StandingsHarness />);
     seed();
     act(() =>
       handlers.onProgress?.(
@@ -85,7 +103,7 @@ describe("multiplayer standings", () => {
     expect(screen.queryByText("stranger")).not.toBeInTheDocument();
   });
   test("shows results ranking and retains a departed racer's result", () => {
-    const { rerender } = render(<ScoreTable {...props} />);
+    const { rerender } = render(<StandingsHarness />);
     seed();
     act(() =>
       handlers.onProgress?.(
@@ -99,9 +117,7 @@ describe("multiplayer standings", () => {
         "other",
       ),
     );
-    rerender(
-      <ScoreTable {...props} phase="results" localProgress={progress} />,
-    );
+    rerender(<StandingsHarness phase="results" localProgress={progress} />);
     expect(screen.getByTestId("room-standings")).toHaveAttribute(
       "data-phase",
       "results",
@@ -114,7 +130,7 @@ describe("multiplayer standings", () => {
     ).toBeInTheDocument();
   });
   test("ignores delayed progress and preserves progress when a member rejoins", () => {
-    render(<ScoreTable {...props} />);
+    render(<StandingsHarness />);
     seed();
     act(() =>
       handlers.onProgress?.(

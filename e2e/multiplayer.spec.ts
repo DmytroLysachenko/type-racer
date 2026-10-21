@@ -94,6 +94,12 @@ test("two visitors share presence, progress, results and the next lobby", async 
       "5 chars",
       { timeout: 10_000 },
     );
+    await expect(
+      bob.locator('[data-peer-position="5"][data-peer-marker="Alice"]'),
+    ).toBeVisible();
+    expect(await bob.getByTestId("race-passage").innerText()).toBe(
+      aliceSentence,
+    );
     await bob.reload();
     await expect(bob.getByRole("row", { name: /Alice/ })).toContainText(
       "5 chars",

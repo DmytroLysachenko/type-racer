@@ -28,6 +28,7 @@ export function useRoomStandings(
   roundId: number,
   sentence: string,
   selfId: string,
+  selfName: string,
   localProgress?: ProgressPayload,
 ) {
   const [rows, setRows] = useState<ProgressPayload[]>([]);
@@ -122,7 +123,7 @@ export function useRoomStandings(
         }
       },
     });
-  }, [roundId, sentence]);
+  }, [roundId, sentence, selfName]);
 
   const ranked = useMemo(() => {
     const parsed = localProgress

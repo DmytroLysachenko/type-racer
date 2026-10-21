@@ -1,29 +1,23 @@
 "use client";
 
-import { useRoomStandings } from "@/lib/hooks/useRoomStandings";
-import type { ProgressPayload } from "@/lib/game/progress";
+import type { useRoomStandings } from "@/lib/hooks/useRoomStandings";
+import { characters } from "@/lib/game/characters";
 import { liveConfigured } from "@/lib/pusher.client";
 import type { RoundPhase } from "@/lib/game/rounds";
 
 export function ScoreTable({
   selfId,
-  roundId,
   phase,
   sentence,
-  localProgress,
+  standings,
 }: {
   selfId: string;
-  roundId: number;
   phase: RoundPhase;
   sentence: string;
-  localProgress?: ProgressPayload;
+  standings: ReturnType<typeof useRoomStandings>;
 }) {
-  const {
-    rows: sorted,
-    status,
-    activeIds,
-  } = useRoomStandings(roundId, sentence, selfId, localProgress);
-  const passageLength = Array.from(sentence).length;
+  const { rows: sorted, status, activeIds } = standings;
+  const passageLength = characters(sentence).length;
   return (
     <section
       className="room-panel"

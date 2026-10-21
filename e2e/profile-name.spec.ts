@@ -161,6 +161,17 @@ test("small landscape view and reduced motion keep race controls usable", async 
     .getByTestId("progress-fill")
     .evaluate((element) => getComputedStyle(element).transitionDuration);
   expect(transition).toBe("0s");
+  const markerMotion = await page
+    .getByTestId("race-passage")
+    .evaluate((passage) => {
+      const character = passage.querySelector("span");
+      character?.classList.add("has-peer-marker");
+      if (character) character.dataset.peerMarker = "Rival";
+      return character
+        ? getComputedStyle(character, "::before").animationName
+        : null;
+    });
+  expect(markerMotion).toBe("none");
   await page.setViewportSize({ width: 375, height: 667 });
   await expect(input).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));

@@ -3,6 +3,7 @@
 import { ScoreTable } from "@/components/ScoreTable";
 import { TypingArea } from "@/components/TypingArea";
 import { useTypingProgress } from "@/lib/hooks/useTypingProgress";
+import { useRoomStandings } from "@/lib/hooks/useRoomStandings";
 import type { RoundInfo } from "@/lib/game/rounds";
 
 /** One keyed race owns the typing session and gives both views its progress. */
@@ -27,6 +28,13 @@ export function RaceRound({
     phase: round.phase,
     remainingMs,
   });
+  const standings = useRoomStandings(
+    round.id,
+    round.sentence,
+    playerId,
+    name,
+    typing.progress,
+  );
   return (
     <>
       <TypingArea
@@ -34,14 +42,21 @@ export function RaceRound({
         phase={round.phase}
         secondsLeft={secondsLeft}
         typing={typing}
+        peers={
+          standings.status === "connected"
+            ? standings.rows.filter(
+                (row) =>
+                  row.playerId !== playerId &&
+                  standings.activeIds.has(row.playerId),
+              )
+            : []
+        }
       />
       <ScoreTable
-        key={`${round.id}:${name}`}
         selfId={playerId}
-        roundId={round.id}
         phase={round.phase}
         sentence={round.sentence}
-        localProgress={typing.progress}
+        standings={standings}
       />
     </>
   );

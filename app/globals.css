@@ -316,9 +316,9 @@ a {
   min-height: 3.2em;
   margin: 20px 0 2px;
   font-family: var(--font-code);
-  font-size: clamp(1.16rem, 2vw, 1.66rem);
+  font-size: clamp(1.35rem, 2.35vw, 1.85rem);
   font-weight: 600;
-  line-height: 1.65;
+  line-height: 1.8;
   letter-spacing: 0.005em;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -338,6 +338,49 @@ a {
   margin-left: -2px;
   border-left: 2px solid var(--color-accent);
   background: var(--color-accent-soft);
+}
+.passage .has-peer-marker {
+  position: relative;
+}
+.passage .has-peer-marker::before {
+  position: absolute;
+  bottom: calc(100% - 0.1em);
+  left: 0;
+  z-index: 1;
+  max-width: 130px;
+  overflow: hidden;
+  padding: 3px 5px;
+  border-radius: 2px;
+  background: var(--color-contrast-surface);
+  color: var(--color-on-contrast);
+  content: attr(data-peer-marker);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: peer-marker-arrive 140ms ease-out both;
+}
+.passage .has-peer-marker::after {
+  position: absolute;
+  top: 0.1em;
+  left: 0;
+  height: 0.9em;
+  border-left: 2px solid var(--color-signal);
+  content: "";
+  pointer-events: none;
+}
+@keyframes peer-marker-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .race-panel .ui-field-label {
   margin-bottom: 8px;
@@ -1177,8 +1220,11 @@ a {
   .passage {
     min-height: 0;
     margin-top: 11px;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     line-height: 1.55;
+  }
+  .practice-prompt .passage {
+    font-size: 1.1rem;
   }
   .stat-grid > div {
     padding-right: 8px;
@@ -1234,6 +1280,9 @@ a {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .passage .has-peer-marker::before {
+    animation: none;
+  }
   .progress-track > span,
   .lane-progress > span {
     transition: none;
