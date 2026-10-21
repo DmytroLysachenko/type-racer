@@ -31,9 +31,9 @@ async function request(path, options) {
   return response;
 }
 
-for (const [path, heading] of [
-  ["/", "Same text. Same clock."],
-  ["/practice", "Find your rhythm."],
+for (const [path, heading, view] of [
+  ["/", "Same text. Same clock.", "race"],
+  ["/practice", "Find your rhythm.", "practice"],
 ]) {
   const html = await (await request(path)).text();
   assert(
@@ -49,6 +49,26 @@ for (const [path, heading] of [
           canonical.replace(/\/$/, ""),
       `${path}: canonical URL missing or SITE_URL differs from this origin`,
     );
+    const imageUrl = new URL(`/share-image?view=${view}`, origin).toString();
+    assert(
+      html.includes(`<meta property="og:image" content="${imageUrl}"`),
+      `${path}: Open Graph image missing or SITE_URL differs from this origin`,
+    );
+    assert(
+      html.includes(`<meta name="twitter:image" content="${imageUrl}"`),
+      `${path}: Twitter image missing or SITE_URL differs from this origin`,
+    );
+    const image = await request(`/share-image?view=${view}`);
+    assert.match(
+      image.headers.get("content-type") ?? "",
+      /^image\/png/,
+      `${path}: social preview is not a PNG`,
+    );
+    const bytes = new Uint8Array(await image.arrayBuffer());
+    assert.equal(bytes.length > 24, true, `${path}: social preview is empty`);
+    const dimensions = new DataView(bytes.buffer);
+    assert.equal(dimensions.getUint32(16), 1200, `${path}: preview width`);
+    assert.equal(dimensions.getUint32(20), 630, `${path}: preview height`);
   }
   console.log(`PASS ${path}: page and heading`);
 }
@@ -81,11 +101,15 @@ if (requireCookie) {
 console.log("PASS /api/guest: bounded guest identity and cookie check");
 
 if (requireSeo) {
+  const icon = await request("/icon.svg");
+  assert.match(icon.headers.get("content-type") ?? "", /image\/svg\+xml/);
+  const appleIcon = await request("/apple-icon");
+  assert.match(appleIcon.headers.get("content-type") ?? "", /image\/png/);
   const robots = await (await request("/robots.txt")).text();
   assert(robots.includes(new URL("/sitemap.xml", origin).toString()));
   const sitemap = await (await request("/sitemap.xml")).text();
   assert(sitemap.includes(new URL("/practice", origin).toString()));
-  console.log("PASS robots and sitemap");
+  console.log("PASS icons, social previews, robots and sitemap");
 }
 
 console.log(

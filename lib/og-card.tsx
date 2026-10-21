@@ -12,14 +12,14 @@ export function createOgCard(view: "race" | "practice") {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        backgroundColor: "#f5f3ee",
-        color: "#1e302d",
+        backgroundColor: "#edf1f2",
+        color: "#172b35",
         padding: "62px 72px 48px",
         fontFamily: "sans-serif",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <span style={{ color: "#087f78", fontSize: 38, fontWeight: 800 }}>
+        <span style={{ color: "#2455af", fontSize: 38, fontWeight: 800 }}>
           {"///"}
         </span>
         <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: 4 }}>
@@ -29,7 +29,7 @@ export function createOgCard(view: "race" | "practice") {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <span
           style={{
-            color: "#087f78",
+            color: "#2455af",
             fontSize: 22,
             fontWeight: 700,
             letterSpacing: 5,
@@ -47,8 +47,8 @@ export function createOgCard(view: "race" | "practice") {
           justifyContent: "space-between",
           width: "100%",
           paddingTop: 24,
-          borderTop: "2px solid #ced7d1",
-          color: "#51655f",
+          borderTop: "2px solid #cbd6da",
+          color: "#526570",
           fontSize: 23,
         }}
       >

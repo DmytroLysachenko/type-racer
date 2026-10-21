@@ -40,7 +40,14 @@ export const metadata: Metadata = {
         ]
       : undefined,
   },
-  twitter: origin ? { card: "summary_large_image" } : undefined,
+  twitter: origin
+    ? {
+        card: "summary_large_image",
+        title: "TypeArena | Live multiplayer typing races",
+        description: "Race the room in synchronized 20-second typing rounds.",
+        images: [new URL("/share-image?view=race", origin).toString()],
+      }
+    : undefined,
   robots: { index: true, follow: true },
 };
 

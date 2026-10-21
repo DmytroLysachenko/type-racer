@@ -31,6 +31,15 @@ export const metadata: Metadata = {
         ]
       : undefined,
   },
+  twitter: origin
+    ? {
+        card: "summary_large_image",
+        title: "Typing practice | TypeArena",
+        description:
+          "Timed and word-count typing practice, with results saved on this device.",
+        images: [new URL("/share-image?view=practice", origin).toString()],
+      }
+    : undefined,
 };
 
 export default async function PracticePage({
