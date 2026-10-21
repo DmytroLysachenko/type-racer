@@ -69,6 +69,37 @@ test("guest route validates origin and name before issuing an HttpOnly cookie", 
   expect((await response.json()).name).toBe("Alice");
 });
 
+test("guest name saves when a proxy exposes the public Host and HTTPS protocol", async () => {
+  const proxied = new NextRequest("http://internal:3000/api/guest", {
+    method: "POST",
+    headers: {
+      host: "typing.example",
+      "x-forwarded-proto": "https",
+      origin: "https://typing.example",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ name: "Dimka" }),
+  });
+  const response = await POST(proxied);
+  expect(response.status).toBe(200);
+  expect((await response.json()).name).toBe("Dimka");
+});
+
+test("proxy headers cannot authorize a different browser origin", async () => {
+  const request = new NextRequest("http://internal:3000/api/guest", {
+    method: "POST",
+    headers: {
+      host: "typing.example",
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "attacker.example",
+      origin: "https://attacker.example",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ name: "Dimka" }),
+  });
+  expect((await POST(request)).status).toBe(403);
+});
+
 test("guest route rejects oversized and non-JSON requests", async () => {
   const oversized = new NextRequest("http://localhost/api/guest", {
     method: "POST",

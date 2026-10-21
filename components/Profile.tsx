@@ -46,13 +46,18 @@ function ProfileForm({
         onSubmit={async (event) => {
           event.preventDefault();
           if (saving) return;
+          const clean = name.trim().replace(/\s+/g, " ");
+          if (!clean || clean.length > 32) {
+            setMessage("Use a display name of 1–32 characters.");
+            return;
+          }
           setSaving(true);
           setMessage("Saving…");
-          const saved = await updateName(name);
+          const saved = await updateName(clean);
           setMessage(
             saved
               ? "Name saved on this device."
-              : "Could not save the name. Use 1–32 characters and try again.",
+              : "Could not save the name right now. Please try again.",
           );
           setSaving(false);
         }}

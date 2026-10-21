@@ -32,9 +32,26 @@ test("guest can edit and keep a display name", async ({ page }) => {
   await expect(input).toBeVisible();
   await input.fill("Portfolio Racer");
   await page.getByTestId("save-profile").click();
-  await expect(page.getByTestId("profile-feedback")).not.toBeEmpty();
+  await expect(page.getByTestId("profile-feedback")).toHaveText(
+    "Name saved on this device.",
+  );
   await page.reload();
   await expect(page.getByTestId("profile-name")).toHaveValue("Portfolio Racer");
+});
+
+test("a failed guest request explains the save failure without blaming the name", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByTestId("profile-name")).toBeVisible();
+  await page.route("**/api/guest", (route) =>
+    route.fulfill({ status: 503, json: { error: "Unavailable" } }),
+  );
+  await page.getByTestId("profile-name").fill("Dimka");
+  await page.getByTestId("save-profile").click();
+  await expect(page.getByTestId("profile-feedback")).toHaveText(
+    "Could not save the name right now. Please try again.",
+  );
 });
 
 test("an unsaved profile edit survives the next shared round", async ({

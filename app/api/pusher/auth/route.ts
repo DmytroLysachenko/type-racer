@@ -3,6 +3,7 @@ import { getPusherServer } from "@/lib/pusher.server";
 import { getCurrentRound } from "@/lib/game/rounds";
 import { readGuestSession } from "@/lib/guest-session";
 import { readLimitedText } from "@/lib/http/read-limited-text";
+import { isSameOriginRequest } from "@/lib/http/same-origin";
 
 export async function POST(req: NextRequest) {
   const server = getPusherServer();
@@ -11,8 +12,7 @@ export async function POST(req: NextRequest) {
       { error: "Live room unavailable" },
       { status: 503 },
     );
-  const origin = req.headers.get("origin");
-  if (origin && origin !== req.nextUrl.origin)
+  if (!isSameOriginRequest(req))
     return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   if (
     !(req.headers.get("content-type") ?? "").includes(
