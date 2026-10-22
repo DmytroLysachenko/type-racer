@@ -1,4 +1,9 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from "react";
+import {
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 export type TextFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -8,6 +13,7 @@ export type TextFieldProps = Omit<
   label: string;
   description?: ReactNode;
   inputClassName?: string;
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 /** Keep the label, input and optional help text connected for accessibility. */
@@ -16,6 +22,7 @@ export function TextField({
   label,
   description,
   inputClassName,
+  inputRef,
   className,
   ...inputProps
 }: TextFieldProps) {
@@ -31,6 +38,7 @@ export function TextField({
         {label}
       </label>
       <input
+        ref={inputRef}
         {...inputProps}
         id={inputId}
         className={["ui-input", inputClassName].filter(Boolean).join(" ")}

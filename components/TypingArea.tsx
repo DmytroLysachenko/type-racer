@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readHistory, type RaceRecord } from "@/lib/game/history";
 import type { useTypingProgress } from "@/lib/hooks/useTypingProgress";
 import { TypingInput } from "@/components/TypingInput";
@@ -22,6 +22,7 @@ export function TypingArea({
   peers: ProgressPayload[];
 }) {
   const { race, typed, setTyped, metrics } = typing;
+  const inputRef = useRef<HTMLInputElement>(null);
   const [history, setHistory] = useState<RaceRecord[]>([]);
   useEffect(() => {
     const update = () => setHistory(readHistory());
@@ -34,6 +35,7 @@ export function TypingArea({
   }, []);
   const target = characters(sentence);
   const entered = characters(typed);
+  const canFocusRace = phase === "racing" && secondsLeft > 0;
   const peerMarkers = new Map<number, string[]>();
   if (phase === "racing" && target.length > 0) {
     for (const peer of peers) {
@@ -46,6 +48,23 @@ export function TypingArea({
       peerMarkers.set(position, names);
     }
   }
+  useEffect(() => {
+    if (!canFocusRace) return;
+    const input = inputRef.current;
+    const active = document.activeElement;
+    if (
+      !input ||
+      input.disabled ||
+      document.visibilityState !== "visible" ||
+      !document.hasFocus() ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      (active !== document.body &&
+        active !== document.documentElement &&
+        active !== input)
+    )
+      return;
+    input.focus({ preventScroll: true });
+  }, [canFocusRace]);
   const progress = Math.round((entered.length / target.length) * 100);
   const raceHistory = history.filter((item) => item.mode.kind === "shared");
   const best = raceHistory.length
@@ -138,6 +157,7 @@ export function TypingArea({
             Type this text: {sentence}
           </p>
           <TypingInput
+            inputRef={inputRef}
             id="typing"
             label="YOUR INPUT"
             description="Backspace to correct. Bulk paste is ignored."

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type Ref } from "react";
 import { TextField } from "@/components/ui";
 
 /** Browser composition behavior shared by live races and personal practice. */
@@ -13,6 +13,7 @@ export function TypingInput({
   placeholder,
   description,
   describedBy,
+  inputRef,
 }: {
   id: string;
   label: string;
@@ -22,12 +23,14 @@ export function TypingInput({
   placeholder: string;
   description: string;
   describedBy: string;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const [compositionDraft, setCompositionDraft] = useState<string | null>(null);
   const composing = useRef(false);
   return (
     <TextField
       id={id}
+      inputRef={inputRef}
       data-testid="race-input"
       label={label}
       inputClassName="typing-input"

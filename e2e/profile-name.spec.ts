@@ -70,6 +70,34 @@ test("an unsaved profile edit survives the next shared round", async ({
   await expect(name).toHaveValue("Still editing");
 });
 
+test("race input takes focus at the start on keyboard devices", async ({
+  page,
+}) => {
+  await startAtPhase(page, 4_000);
+  await page.goto("/");
+  const input = page.getByTestId("race-input");
+  await expect(input).toBeDisabled();
+  await page.clock.fastForward(2_000);
+  await expect(input).toBeEnabled();
+  const touchDevice = await page.evaluate(
+    () => window.matchMedia("(pointer: coarse)").matches,
+  );
+  if (touchDevice) await expect(input).not.toBeFocused();
+  else await expect(input).toBeFocused();
+});
+
+test("round start keeps focus in the name field while editing", async ({
+  page,
+}) => {
+  await startAtPhase(page, 4_000);
+  await page.goto("/");
+  const name = page.getByTestId("profile-name");
+  await name.focus();
+  await page.clock.fastForward(2_000);
+  await expect(page.getByTestId("race-input")).toBeEnabled();
+  await expect(name).toBeFocused();
+});
+
 test("completing a race saves a personal best and joins the next round", async ({
   page,
 }) => {
