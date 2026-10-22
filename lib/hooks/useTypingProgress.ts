@@ -15,6 +15,7 @@ import type { ProgressPayload } from "@/lib/game/progress";
 import type { RoundPhase } from "@/lib/game/rounds";
 import { PASSAGE_VERSION } from "@/lib/content/passages";
 import { summarizeMistypedTargets } from "@/lib/game/insights";
+import { PROGRESS_INTERVAL_MS } from "@/lib/config/progress-interval";
 
 export function useTypingProgress({
   playerId,
@@ -37,7 +38,7 @@ export function useTypingProgress({
     raceRef.current = race;
   }, [race]);
   const durationRef = useRef<number | null>(null);
-  const lastSentAt = useRef(0);
+  const lastSentAt = useRef<number | null>(null);
   const savedResult = useRef(false);
 
   const saveResult = useCallback(
@@ -133,7 +134,12 @@ export function useTypingProgress({
   useEffect(() => {
     if (race.phase === "ready" || document.visibilityState === "hidden") return;
     const now = performance.now();
-    if (race.phase === "running" && now - lastSentAt.current < 2000) return;
+    if (
+      race.phase === "running" &&
+      lastSentAt.current !== null &&
+      now - lastSentAt.current < PROGRESS_INTERVAL_MS
+    )
+      return;
     lastSentAt.current = now;
     sendProgress(roundId, progress);
   }, [race.phase, roundId, progress]);
