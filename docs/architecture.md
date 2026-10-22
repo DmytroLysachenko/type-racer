@@ -14,8 +14,9 @@ Static race route / metadata / introduction / footer
       ├─ usePlayer → POST /api/guest → signed guest cookie
       ├─ RaceRound keyed by round ID
       │   ├─ useTypingProgress → pure session + metrics → local history
-      │   ├─ TypingArea → visual passage, input, result
-      │   └─ ScoreTable → useRoomStandings → Pusher presence and snapshots
+      │   ├─ useRoomStandings → Pusher presence and snapshots
+      │   ├─ TypingArea → visual passage, peer positions, input, result
+      │   └─ ScoreTable → shared room standings
 /practice → server-rendered entry + client PracticeRun → pure session/metrics + versioned content → local history
 POST /api/pusher/auth → signed guest cookie → versioned Pusher presence authorization
 GET /share-image → two cached, original social preview variants
@@ -34,6 +35,8 @@ Personal practice also offers original short thoughts, number and punctuation ex
 - Personal history is capped at 50 records across modes, parsed defensively, and never sent to the server. Version 1 race records remain readable and are copied to version 2 on the next save. Storage failures show a dismissible alert without interrupting the result.
 - Accepted mistakes also count the target grapheme that was missed. Saved records keep at most 16 non-whitespace character counts. Recent results show exact WPM in a list with a decorative bar chart, a recommendation derived from measured accuracy/corrections, and a retry of a passage that produced a repeated error. These are local coaching cues, not claims of learning or verified skill.
 - Peer progress is shape-checked and bound to Pusher's sender identity. It is still self-reported, so standings remain unverified. Connection status distinguishes an open Pusher socket from a successfully subscribed round room.
+- The first accepted character and completion broadcast immediately. Running attempts broadcast no more often than `NEXT_PUBLIC_PROGRESS_INTERVAL_MS` (default 1000 ms, configured at build time); the 250 ms local timer does not send each tick. Hidden tabs pause progress broadcasts. Shorter intervals increase Pusher's room-wide fanout.
+- The same room snapshot drives the standings table and the visual peer markers above the passage. Markers are decorative; the table retains exact progress for assistive technology. A keyboard device focuses the race input when an active tab enters the racing phase, unless another control already has focus. Touch devices keep the keyboard closed until the user taps.
 - A successful room subscription requests peer snapshots immediately and twice more within three seconds. These bounded retries cover peers resubscribing at the same time; they do not establish deployed reconnection reliability without a live test.
 
 ## Theme and UI modules

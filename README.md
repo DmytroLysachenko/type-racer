@@ -4,13 +4,15 @@ A live multiplayer typing racer with synchronized lobbies, 20-second races and s
 
 ## Features
 
-- Server-synchronized round clock, shared lobby/race/results phases, rotating passage, presence room and live standings.
+- Server-synchronized round clock, shared lobby/race/results phases, rotating passage, presence room and live standings. Active peers appear above their last reported character in the passage; the standings table gives their reported character count.
 - Private practice with 15/30/60/120-second and 25/50/100-word tests, plus original short thoughts, punctuation, numbers, gentle/challenge and Polish exercises, and private custom text.
 - Mode-specific personal bests, a small recent-results chart, accuracy-based next steps, and a retry of passages containing often-missed target characters.
 - Connection status and progress recovery when a visitor reloads or rejoins a room.
+- The race input takes focus when a visible tab enters the racing phase on a keyboard device. It does not take focus from another control or open a touch device's virtual keyboard automatically.
 - Five-character net/raw WPM and CPM, Unicode-aware character accuracy, and corrected/remaining error counts.
 - Server-signed, expiring guest identity for room authorization, editable name and bounded device-local history with JSON export and deletion. The last practice mode is saved; custom text is not saved. No account or database is required for social races.
 - Responsive light/dark/system themes with a saved preference, reusable semantic tokens, accessible controls, visible keyboard focus, and reduced-motion support.
+- Distinct app and home-screen icons, plus race/practice social previews, canonical URLs and sitemap entries when `SITE_URL` is set.
 
 ## Stack and architecture
 
@@ -28,6 +30,8 @@ pnpm dev
 ```
 
 Open <http://localhost:3000> for the live race or <http://localhost:3000/practice> for private practice. Configure `PUSHER_APP_ID`, `PUSHER_SECRET`, `NEXT_PUBLIC_PUSHER_KEY`, and `NEXT_PUBLIC_PUSHER_CLUSTER` in `.env.local` for multiplayer. An optional `SESSION_SECRET` can sign guest cookies separately; use a long random value. Set `SITE_URL` to the stable production origin, such as `https://example.com`, in both build and runtime environments; it enables canonical links, a two-page sitemap, and race/practice share previews. Keep `PUSHER_SECRET` and `SESSION_SECRET` server-only. The Pusher Channels app must support presence channels and client events. Without Pusher values, typing still works locally, but other players cannot appear.
+
+`NEXT_PUBLIC_PROGRESS_INTERVAL_MS` sets the minimum time between progress broadcasts while an active racer is typing. It defaults to `1000` ms; supported values are `250`–`10000` ms, and invalid values fall back to `1000`. The first accepted character and completion send immediately. Updates happen when typing changes, so this setting is a throttle, not a fixed polling timer. It is embedded by Next.js during the build; changing it in production requires a rebuild and redeploy. A shorter interval increases Pusher message usage, especially when many players share a room.
 
 ## Commands
 

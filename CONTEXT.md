@@ -32,6 +32,14 @@ _Avoid_: Account, authenticated user
 A room position calculated from peer-submitted progress. It is social feedback and does not verify human typing.
 _Avoid_: Verified score, leaderboard rank
 
+**Progress update**:
+A guest's self-reported snapshot of their current race attempt, sent through the room after input changes. Updates are throttled while typing; the first input and completion are sent immediately. Peers use the latest accepted update for standings and passage markers.
+_Avoid_: Verified event, server-measured keystroke
+
+**Peer marker**:
+A visual indication of an active guest's position above a character in the shared passage. It reflects the latest accepted progress update and may lag behind that guest's actual input. Exact room positions remain available in the standings table.
+_Avoid_: Cursor, verified position
+
 **Personal result**:
 A completed race or practice attempt saved on the player's device. It is not shared across devices.
 _Avoid_: Account history, global score

@@ -10,6 +10,8 @@ The current TypeArena theme uses a cool slate canvas, cobalt for interactive emp
 
 Use semantic color tokens in shared UI. Race-specific states, layout, and motion belong in `app/globals.css`. The phase rail is a compact overview of the 5-second lobby, 20-second race, and 6-second results window. It is a status display, not navigation. Keep the passage and input prominent, especially at narrow widths; the mobile layout places the input in the first viewport at 375px. Respect `prefers-reduced-motion` and retain visible keyboard focus.
 
+The passage uses a larger monospace scale for sustained reading. Remote racers appear as compact name markers above their next character; clustered racers share a count. A marker label appears over 140 ms at its new position; the position line itself is immediate. Reduced-motion preference removes the animation. These markers never change the passage text or its screen-reader output. The standings table remains the named, precise representation of each player's progress.
+
 To reuse the theme, import `styles/tokens.css` before `styles/primitives.css` in the destination app's global CSS. Change the token values for that product; preserve the semantic names so shared controls continue to work. The app-specific `app/globals.css` contains the race layout and should not be copied as a generic library.
 
 ## UI modules
